@@ -1,0 +1,16 @@
+# Aspose.3D Wavefront OBJ Exporter
+# Copyright 2004-2024 Aspose Pty Ltd.
+# File created: 02/27/2024 17:59:35
+
+newmtl DefaultMaterial
+	illum 2
+	Kd 1 1 1
+	Ke 0 0 0
+	Pr 0
+	Pm 0
+	d 1
+	Tr 0
+	map_Kd DefaultMaterial_baseColor.jpg
+	map_Pr DefaultMaterial_metallicRoughness_metal.jpg
+	map_Pm DefaultMaterial_metallicRoughness_metal.jpg
+	norm DefaultMaterial_normal.jpg
