@@ -1,0 +1,7 @@
+glad.c
+*.vcxproj
+*.filters
+*.user
+*.tlog
+x64
+x86
