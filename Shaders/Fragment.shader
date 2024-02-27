@@ -53,12 +53,12 @@ struct Ray
 //	vec3 col;
 //};
 //
-//struct Plane
-//{
-//	vec3 pos;
-//	vec3 normal;
-//	vec3 col;
-//};
+struct Plane
+{
+	vec3 pos;
+	vec3 normal;
+	vec3 col;
+};
 
 //float intersect(Ray ray, Sphere sphere)
 //{
@@ -74,13 +74,13 @@ struct Ray
 //	return 0.0;
 //}
 //
-//float intersect(Ray ray, Plane plane)
-//{
-//	float t = dot(plane.normal, plane.pos - ray.start) / dot(plane.normal, ray.dir);
-//	if (t > 0.00001)
-//		return t;
-//	return 0.0;
-//}
+float intersect(Ray ray, Plane plane)
+{
+	float t = dot(plane.normal, plane.pos - ray.start) / dot(plane.normal, ray.dir);
+	if (t > 0.00001)
+		return t;
+	return 0.0;
+}
 
 float intersect(Ray ray, int tri)
 {
@@ -142,7 +142,7 @@ bool intersect(Ray ray, Node aabb)
 }
 
 //uniform Sphere spheres[100];
-//const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.2, 0.2, 0.2));
+const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.2, 0.2, 0.2));
 uniform int num_nodes;
 
 Ray traceRay(Ray ray)
@@ -224,32 +224,13 @@ Ray traceRay(Ray ray)
 	}
 
 
-	/*for (int j = 0; j < num_nodes; ++j)
-	{
-		if (nodes[j].tri_index == -1)
-			continue;
-		int i = nodes[j].tri_index;
-		float d = intersect(ray, i * 3);
-		if (d != 0.0 && d < dist)
-		{
-			dist = d;
-			col = vec3(0.7, 1.0, 0.2);
-			normal = cross(vertices[indices[i*3+2]] - vertices[indices[i*3]],
-				vertices[indices[i*3+1]] - vertices[indices[i*3]]);
-			normal = normalize(normal);
-			col =  (0.5 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.5)* col;
-			terminate = false;
-		}
-	}*/
-
-
-	/*float d = intersect(ray, plane);
+	float d = intersect(ray, plane);
 	if (d > 0 && d < dist)
 	{
 		dist = d;
 		col = plane.col;
 		terminate = false;
-	}*/
+	}
 
 	return Ray(ray.start + ray.dir * dist * 0.999, normalize(reflect(ray.dir, normal)), col * ray.col, terminate);
 }
@@ -265,7 +246,7 @@ void main()
 	Ray ray = Ray(start, normalize(end - start), vec3(1.0, 1.0, 1.0), false);
 	ray.dir = normalize(ray.dir);
 
-	for (uint i = 0; i < 3; ++i)
+	for (uint i = 0; i < 4; ++i)
 	{
 		ray = traceRay(ray);
 		if (ray.terminate)
