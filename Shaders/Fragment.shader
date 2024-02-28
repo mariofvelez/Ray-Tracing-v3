@@ -17,7 +17,7 @@ struct Node
 	vec3 max;
 };
 
-layout(std430, binding = 0) readonly buffer sceneBuffer
+layout(std430, binding = 0) buffer sceneBuffer
 {
 	vec3 vertices[100000];
 	int indices[100000];
@@ -25,9 +25,9 @@ layout(std430, binding = 0) readonly buffer sceneBuffer
 	int indices_size;
 };
 
-layout(std430, binding = 1) readonly buffer bvhBuffer
+layout(std430, binding = 1) buffer bvhBuffer
 {
-	Node nodes[200000];
+	Node nodes[];
 };
 
 vec3 reflect(vec3 vec, vec3 normal)
@@ -206,13 +206,13 @@ Ray traceRay(Ray ray)
 				// put far node on stack, advance to near node
 				if (ray.dir[node.axis] < 0)
 				{
-					nodes_to_visit[to_visit_offset++] = node.right;
+					nodes_to_visit[to_visit_offset++] = current_node + 1;
 					current_node = node.left;
 				}
 				else
 				{
 					nodes_to_visit[to_visit_offset++] = node.left;
-					current_node = node.right;
+					current_node = current_node + 1;
 				}
 			}
 		}

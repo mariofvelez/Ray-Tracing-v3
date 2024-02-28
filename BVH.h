@@ -187,6 +187,7 @@ public:
 			int mid = (start + end) / 2;
 			if (min[dim] == max[dim])
 			{
+				//dlogln("here");
 				// create leaf node
 				int prim_offset = ordered_prims.size();
 				for (int i = start; i < end; ++i)

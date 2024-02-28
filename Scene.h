@@ -49,7 +49,7 @@ public:
 
 	Mesh mesh;
 	int num_nodes;
-	Node nodes[200000];
+	Node nodes[40000];
 
 	Scene() : num_nodes(0)
 	{
@@ -70,7 +70,7 @@ public:
 		while (std::getline(file, text))
 		{
 			unsigned int token_length = 0;
-			std::string tokens[64];
+			std::string tokens[8];
 
 			std::stringstream ss(text);
 			while (ss >> tokens[token_length])
