@@ -23,7 +23,9 @@ My 3rd attemp at a ray-tracer. Real-time with tens of thousands of triangles
 - Load scenes from USDZ file
 - Switch to compute shaders instead of fragment shader
 - Use of RT cores with DirectX 12
+- Use of vertex normals
 
-# things to Fix
+# Things to Fix
 - Takes long to load application on my desktop and takes 3GB of memory to compile shader (???)
 - Problem does not occur on my laptop with the same code (???)
+- Separate BVH building and linearization. This should fix the missing triangles problem
