@@ -42,6 +42,7 @@ struct Ray
 {
 	vec3 start;
 	vec3 dir;
+	vec3 inv;
 	vec3 col;
 	bool terminate;
 };
@@ -120,20 +121,20 @@ float intersect(Ray ray, int tri)
 
 bool intersect(Ray ray, Node aabb)
 {
-	float tx1 = (aabb.min.x - ray.start.x) / ray.dir.x;
-	float tx2 = (aabb.max.x - ray.start.x) / ray.dir.x;
+	float tx1 = (aabb.min.x - ray.start.x) * ray.inv.x;
+	float tx2 = (aabb.max.x - ray.start.x) * ray.inv.x;
 
 	float tmin = min(tx1, tx2);
 	float tmax = max(tx1, tx2);
 
-	float ty1 = (aabb.min.y - ray.start.y) / ray.dir.y;
-	float ty2 = (aabb.max.y - ray.start.y) / ray.dir.y;
+	float ty1 = (aabb.min.y - ray.start.y) * ray.inv.y;
+	float ty2 = (aabb.max.y - ray.start.y) * ray.inv.y;
 
 	tmin = max(tmin, min(ty1, ty2));
 	tmax = min(tmax, max(ty1, ty2));
 
-	float tz1 = (aabb.min.z - ray.start.z) / ray.dir.z;
-	float tz2 = (aabb.max.z - ray.start.z) / ray.dir.z;
+	float tz1 = (aabb.min.z - ray.start.z) * ray.inv.z;
+	float tz2 = (aabb.max.z - ray.start.z) * ray.inv.z;
 
 	tmin = max(tmin, min(tz1, tz2));
 	tmax = min(tmax, max(tz1, tz2));
@@ -231,8 +232,8 @@ Ray traceRay(Ray ray)
 		col = plane.col;
 		terminate = false;
 	}
-
-	return Ray(ray.start + ray.dir * dist * 0.999, normalize(reflect(ray.dir, normal)), col * ray.col, terminate);
+	vec3 dir = normalize(reflect(ray.dir, normal));
+	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, col * ray.col, terminate);
 }
 
 void main()
@@ -243,10 +244,11 @@ void main()
 	vec3 start = (camera * ray_start).xyz;
 	vec3 end = (camera * ray_end).xyz;
 
-	Ray ray = Ray(start, normalize(end - start), vec3(1.0, 1.0, 1.0), false);
+	vec3 dir = normalize(end - start);
+	Ray ray = Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
 	ray.dir = normalize(ray.dir);
 
-	for (uint i = 0; i < 4; ++i)
+	for (uint i = 0; i < 8; ++i)
 	{
 		ray = traceRay(ray);
 		if (ray.terminate)
