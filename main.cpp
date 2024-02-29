@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <random>
 
+#include "stb_image.h"
+
 #include "Debug.h"
 #include "Camera.h"
 #include "Shader.h"
@@ -19,6 +21,41 @@ void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+}
+
+unsigned int textureFromFile(const std::string& filename, unsigned int texture_type = GL_TEXTURE_2D)
+{
+	stbi_set_flip_vertically_on_load(true);
+
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, num_components;
+	std::cout << "filename: " << filename << std::endl;
+	unsigned char* data = stbi_load(filename.c_str(), &width, &height, &num_components, 0);
+	std::cout << "stbi loaded texture: " << textureID << std::endl;
+	if (data)
+	{
+		glBindTexture(texture_type, textureID);
+		glTexImage2D(texture_type, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(texture_type);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glTexParameteri(texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		std::cout << "Texture failed to load at path: " << filename << std::endl;
+		stbi_image_free(data);
+	}
+	return textureID;
 }
 
 int main()
@@ -91,6 +128,10 @@ int main()
 
 	unsigned int camera_loc = shader->uniformLoc("camera");
 
+	unsigned int dragon_texture = textureFromFile("Objects/Stanford_Dragon/DefaultMaterial_baseColor.jpg");
+	glBindTexture(GL_TEXTURE_2D, dragon_texture);
+	shader->setInt("dragon_texture", 0);
+
 	const unsigned int num_spheres = 64;
 	/*glm::vec3 cols[] = {
 		glm::vec3(1.0f, 0.5f, 0.5f),
@@ -129,7 +170,7 @@ int main()
 		//scene->loadObject("Objects/icosahedron.obj", pos);
 	}
 	dlogln("loading object");
-	scene->loadObject("Objects/Stanford_Dragon/Stanford_Dragon_PBR.obj", glm::vec3(0.0f, 0.0f, 1.0f));/*
+	scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 1.0f));/*
 	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, 10.0f, 2.0f));
 	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, -10.0f, 2.0f));*/
 	

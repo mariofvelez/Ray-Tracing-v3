@@ -11,8 +11,12 @@
 struct Mesh
 {
 	glm::vec4 vertices[100000];
+	glm::vec4 normals[100000];
+	glm::vec2 texture[100000];
 	int indices[100000];
 	int vertex_size = 0;
+	int normal_size = 0;
+	int texture_size = 0;
 	int index_size = 0;
 };
 
@@ -86,11 +90,26 @@ public:
 					glm::vec4 v = glm::vec4(std::stof(tokens[1]) + offset.x,
 											-std::stof(tokens[3]) + offset.y,
 											std::stof(tokens[2]) + offset.z, 1.0f);
-					v *= 0.02f;
+					v *= 0.1f;
 					mesh.vertices[mesh.vertex_size] = v;
 					mesh.vertex_size++;
 
 					//std::cout << "v: " << v.x << ", " << v.y << ", " << v.z << std::endl;
+				}
+				else if (tokens[0] == "vn")
+				{
+					glm::vec4 v = glm::vec4(std::stof(tokens[1]),
+											-std::stof(tokens[3]),
+											std::stof(tokens[2]), 1.0f);
+					mesh.normals[mesh.normal_size] = v;
+					mesh.normal_size++;
+				}
+				else if (tokens[0] == "vt")
+				{
+					glm::vec2 v = glm::vec2(std::stof(tokens[1]), std::stof(tokens[2]));
+
+					mesh.texture[mesh.texture_size] = v;
+					mesh.texture_size++;
 				}
 				else if (tokens[0] == "f")
 				{

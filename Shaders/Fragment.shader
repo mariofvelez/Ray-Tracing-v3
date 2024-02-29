@@ -20,8 +20,12 @@ struct Node
 layout(std430, binding = 0) buffer sceneBuffer
 {
 	vec3 vertices[100000];
+	vec3 normals[100000];
+	vec2 textures[100000];
 	int indices[100000];
 	int vertices_size;
+	int normals_size;
+	int textures_size;
 	int indices_size;
 };
 
@@ -83,7 +87,7 @@ float intersect(Ray ray, Plane plane)
 	return 0.0;
 }
 
-float intersect(Ray ray, int tri)
+vec3 intersect(Ray ray, int tri)
 {
 	vec3 a = vertices[indices[tri]];
 	vec3 b = vertices[indices[tri + 1]];
@@ -97,7 +101,7 @@ float intersect(Ray ray, int tri)
 	float det = dot(e1, ray_cross_e2);
 
 	if (det > -0.00001 && det < 0.00001f)
-		return 0.0;
+		return vec3(0.0);
 
 	float inv_det = 1.0 / det;
 	vec3 s = ray.start - a;
@@ -105,18 +109,18 @@ float intersect(Ray ray, int tri)
 	float u = inv_det * dot(s, ray_cross_e2);
 
 	if (u < 0 || u > 1)
-		return 0.0;
+		return vec3(0.0);
 
 	vec3 s_cross_e1 = cross(s, e1);
 
 	float v = inv_det * dot(ray.dir, s_cross_e1);
 
 	if (v < 0 || u + v > 1)
-		return 0.0;
+		return vec3(0.0);
 
 	float t = inv_det * dot(e2, s_cross_e1);
 
-	return t > 0.00001 ? t : 0.0;
+	return t > 0.00001 ? vec3(t, u, v) : vec3(0.0);
 }
 
 bool intersect(Ray ray, Node aabb)
@@ -145,6 +149,7 @@ bool intersect(Ray ray, Node aabb)
 //uniform Sphere spheres[100];
 const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.2, 0.2, 0.2));
 uniform int num_nodes;
+uniform sampler2D dragon_texture;
 
 Ray traceRay(Ray ray)
 {
@@ -189,15 +194,21 @@ Ray traceRay(Ray ray)
 				for (int i = 0; i < node.num_tris; ++i)
 				{
 					int tri = (node.tri_index + i) * 3;
-					float d = intersect(ray, tri);
-					if (d != 0.0 && d < dist)
+					vec3 intersection = intersect(ray, tri);
+					if (intersection.x > 0.0 && intersection.x < dist)
 					{
-						dist = d;
-						col = vec3(1.0, 0.82, 0.11);// vec3(0.7, 1.0, 0.2);
-						normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
-							vertices[indices[tri + 1]] - vertices[indices[tri]]);
-						normal = normalize(normal);
-						col = (0.5 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.5) * col;
+						dist = intersection.x;
+						float u = intersection.y;
+						float v = intersection.z;
+						vec2 a = textures[indices[tri]];
+						vec2 b = textures[indices[tri + 1]];
+						vec2 c = textures[indices[tri + 2]];
+						col = texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz;// vec3(1.0, 0.82, 0.11);vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						//normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
+						//	vertices[indices[tri + 1]] - vertices[indices[tri]]);
+						normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
+						normal = -normalize(normal);
+						col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
 						terminate = false;
 					}
 				}
@@ -237,7 +248,7 @@ Ray traceRay(Ray ray)
 		terminate = false;
 	}
 	vec3 dir = normalize(reflect(ray.dir, normal));
-	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, col * ray.col, terminate);
+	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
 
 void main()
@@ -252,7 +263,7 @@ void main()
 	Ray ray = Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
 	ray.dir = normalize(ray.dir);
 
-	for (uint i = 0; i < 1; ++i)
+	for (uint i = 0; i < 3; ++i)
 	{
 		ray = traceRay(ray);
 		if (ray.terminate)
