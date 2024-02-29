@@ -3,7 +3,16 @@
 My 3rd attemp at a ray-tracer. Real-time with tens of thousands of triangles
 
 ![image](https://github.com/mariofvelez/Ray-Tracing-v3/assets/32421774/6fdc00e3-83ea-4367-a5ad-cacfa42b6423)
+
+Demonstration of textures and vertex normals
+
+![image](https://github.com/mariofvelez/Ray-Tracing-v3/assets/32421774/3a917ddf-b39f-4a5f-b20d-db487217e944)
+
+Visualization of the BVH. Notice how there is a larger triangle density near the head leading to a higher BVH node density. Boxes are colored based on the axis they were split by.
+
 ![image](https://github.com/mariofvelez/Ray-Tracing-v3/assets/32421774/1cc5000f-1f63-495b-ae52-a6faf046f977)
+
+Image without vertex normals or textures and missing triangles
 
 # Features
 - Loading from OBJ files
