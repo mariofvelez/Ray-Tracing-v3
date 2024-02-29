@@ -20,7 +20,7 @@ struct Node
 {
 	int axis;
 	int left;
-	int right;
+	int num_tris;
 	int tri_index;
 	glm::vec4 min;
 	glm::vec4 max;

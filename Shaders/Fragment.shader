@@ -11,7 +11,7 @@ struct Node
 {
 	int axis;
 	int left;
-	int right;
+	int num_tris;
 	int tri_index;
 	vec3 min;
 	vec3 max;
@@ -186,16 +186,20 @@ Ray traceRay(Ray ray)
 			if (node.tri_index > -1) // leaf
 			{
 				// intersect ray with primitive(s) in leaf node
-				float d = intersect(ray, node.tri_index * 3);
-				if (d != 0.0 && d < dist)
+				for (int i = 0; i < node.num_tris; ++i)
 				{
-					dist = d;
-					col = vec3(1.0, 0.82, 0.11);// vec3(0.7, 1.0, 0.2);
-					normal = cross(vertices[indices[node.tri_index * 3 + 2]] - vertices[indices[node.tri_index * 3]],
-						vertices[indices[node.tri_index * 3 + 1]] - vertices[indices[node.tri_index * 3]]);
-					normal = normalize(normal);
-					col = (0.5 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.5) * col;
-					terminate = false;
+					int tri = (node.tri_index + i) * 3;
+					float d = intersect(ray, tri);
+					if (d != 0.0 && d < dist)
+					{
+						dist = d;
+						col = vec3(1.0, 0.82, 0.11);// vec3(0.7, 1.0, 0.2);
+						normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
+							vertices[indices[tri + 1]] - vertices[indices[tri]]);
+						normal = normalize(normal);
+						col = (0.5 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.5) * col;
+						terminate = false;
+					}
 				}
 				if (to_visit_offset == 0)
 					break;
@@ -248,7 +252,7 @@ void main()
 	Ray ray = Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
 	ray.dir = normalize(ray.dir);
 
-	for (uint i = 0; i < 8; ++i)
+	for (uint i = 0; i < 1; ++i)
 	{
 		ray = traceRay(ray);
 		if (ray.terminate)
@@ -257,7 +261,7 @@ void main()
 
 	/*vec3 bvh_col = vec3(0.0, 0.0, 0.0);
 
-	Ray new_ray = Ray(start, normalize(end - start), vec3(1.0, 1.0, 1.0), false);
+	Ray new_ray = Ray(start, normalize(end - start), 1.0 / normalize(end - start), vec3(1.0, 1.0, 1.0), false);
 	for (int i = 0; i < num_nodes; ++i)
 	{
 		if (intersect(new_ray, nodes[i]))

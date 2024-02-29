@@ -129,14 +129,12 @@ int main()
 		//scene->loadObject("Objects/icosahedron.obj", pos);
 	}
 	dlogln("loading object");
-	scene->loadObject("Objects/Stanford_Dragon/Stanford_Dragon_PBR.obj", glm::vec3(0.0f));/*
+	scene->loadObject("Objects/Stanford_Dragon/Stanford_Dragon_PBR.obj", glm::vec3(0.0f, 0.0f, 1.0f));/*
 	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, 10.0f, 2.0f));
 	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, -10.0f, 2.0f));*/
 	
 	/*scene.loadObject("Objects/icosahedron.obj", glm::vec3(-1.0f, 0.0f, 2.0f));
 	scene.loadObject("Objects/icosahedron.obj", glm::vec3(1.0f, 1.0f, 1.0f));*/
-	dlogln("sending tri data to GPU");
-	scene->updateBuffer();
 
 	debug_start(glfwGetTime(), 0);
 
@@ -146,6 +144,9 @@ int main()
 
 	dlogln("sending BVH data to GPU");
 	scene->computeBVH(shader);
+
+	dlogln("sending tri data to GPU");
+	scene->updateBuffer();
 
 	debug_end(glfwGetTime(), 0);
 

@@ -109,11 +109,29 @@ public:
 		int total_nodes;
 		std::vector<int> ordered_prims;
 		ordered_prims.reserve(primitives.size());
-		recursiveBuild(primitives, 0, primitives.size(), &total_nodes, ordered_prims);
+		root = recursiveBuild(primitives, 0, primitives.size(), &total_nodes, ordered_prims);
 
+		/*for (unsigned int i = 0; i < primitives.size(); ++i)
+		{
+			std::cout << "prim: " << primitives[i].index << std::endl;
+			std::cout << "ordr: " << ordered_prims[i] << std::endl;
+		}*/
+
+		int new_indices[100000];
+		for (unsigned int i = 0; i < ordered_prims.size(); ++i)
+		{
+			int index = ordered_prims[i];
+			new_indices[i * 3] = scene->mesh.indices[index * 3];
+			new_indices[i * 3 + 1] = scene->mesh.indices[index * 3 + 1];
+			new_indices[i * 3 + 2] = scene->mesh.indices[index * 3 + 2];
+		}
+		for (unsigned int i = 0; i < scene->mesh.index_size; ++i)
+		{
+			scene->mesh.indices[i] = new_indices[i];
+		}
 	}
 	
-	BVHNode* recursiveBuild(std::vector<Primitive>& primitives, int start, int end, int* total_nodes, std::vector<int> ordered_prims)
+	BVHNode* recursiveBuild(std::vector<Primitive>& primitives, int start, int end, int* total_nodes, std::vector<int>& ordered_prims)
 	{
 
 		BVHNode* node = new BVHNode();
@@ -136,13 +154,13 @@ public:
 		scene->nodes[scene->num_nodes].min = glm::vec4(min.x, min.y, min.z, 0.0f);
 		scene->nodes[scene->num_nodes].max = glm::vec4(max.x, max.y, max.z, 0.0f);
 		scene->nodes[scene->num_nodes].left = -1;
-		scene->nodes[scene->num_nodes].right = -1;
+		scene->nodes[scene->num_nodes].num_tris = -1;
 		scene->nodes[scene->num_nodes].tri_index = -1;
 		node->linear_index = scene->num_nodes;
 		scene->num_nodes++;
 
 		int prim_count = end - start;
-		if (prim_count == 1)
+		if (prim_count == 4)
 		{
 			// create leaf node
 			int prim_offset = ordered_prims.size();
@@ -152,7 +170,8 @@ public:
 				ordered_prims.push_back(prim_num);
 			}
 			node->initLeaf(prim_offset, prim_count, min, max);
-			scene->nodes[node->linear_index].tri_index = primitives[start].index;
+			scene->nodes[node->linear_index].tri_index = prim_offset;// primitives[start].index;
+			scene->nodes[node->linear_index].num_tris = prim_count;
 			return node;
 		}
 		else
@@ -196,7 +215,8 @@ public:
 					ordered_prims.push_back(prim_num);
 				}
 				node->initLeaf(prim_offset, prim_count, min, max);
-				scene->nodes[node->linear_index].tri_index = primitives[start].index;
+				scene->nodes[node->linear_index].tri_index = prim_offset;// primitives[start].index;
+				scene->nodes[node->linear_index].num_tris = prim_count;
 				return node;
 			}
 			else
@@ -224,7 +244,6 @@ public:
 					recursiveBuild(primitives, start, mid, total_nodes, ordered_prims),
 					recursiveBuild(primitives, mid,   end, total_nodes, ordered_prims));
 				scene->nodes[node->linear_index].left = node->left->linear_index;
-				scene->nodes[node->linear_index].right = node->right->linear_index;
 				scene->nodes[node->linear_index].axis = dim;
 			}
 		}
