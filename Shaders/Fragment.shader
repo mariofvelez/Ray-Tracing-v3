@@ -150,11 +150,13 @@ bool intersect(Ray ray, Node aabb)
 const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.2, 0.2, 0.2));
 uniform int num_nodes;
 uniform sampler2D dragon_texture;
+uniform samplerCube cubemap_texture;
 
 Ray traceRay(Ray ray)
 {
 	float dist = 999999.9;
-	vec3 col = vec3(1.0);// vec3(0.4, 0.8, 1.0);
+	vec3 sky_dir = vec3(ray.dir.x, ray.dir.z, ray.dir.y);
+	vec3 col = texture(cubemap_texture, sky_dir).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
 	/*for (int i = 0; i < 100; ++i)
@@ -240,13 +242,13 @@ Ray traceRay(Ray ray)
 	}
 
 
-	float d = intersect(ray, plane);
+	/*float d = intersect(ray, plane);
 	if (d > 0 && d < dist)
 	{
 		dist = d;
 		col = plane.col;
 		terminate = false;
-	}
+	}*/
 	vec3 dir = normalize(reflect(ray.dir, normal));
 	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
@@ -280,6 +282,6 @@ void main()
 			bvh_col[nodes[i].axis] += 0.02;
 		}
 	}*/
-	
+	vec3 d = vec3(dir.x, dir.z, dir.y);
 	FragColor = vec4(ray.col, 1.0);
 }

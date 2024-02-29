@@ -57,6 +57,69 @@ unsigned int textureFromFile(const std::string& filename, unsigned int texture_t
 	}
 	return textureID;
 }
+unsigned int CubemapFromFile(std::vector<std::string>& faces, const std::string& directory, bool linearize)
+{
+	stbi_set_flip_vertically_on_load(false);
+
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, num_channels;
+
+	for (unsigned int i = 0; i < faces.size(); ++i)
+	{
+		std::string filename = faces[i];
+		if (directory != "")
+			filename = directory + '/' + filename;
+
+		unsigned char* data = stbi_load(filename.c_str(), &width, &height, &num_channels, 0);
+
+		if (data)
+		{
+			GLenum source_format;
+			GLenum format;
+			if (num_channels == 1)
+			{
+				source_format = GL_RED;
+				format = GL_RED;
+			}
+			else if (num_channels == 3)
+			{
+				if (linearize)
+					source_format = GL_SRGB;
+				else
+					source_format = GL_RGB;
+				format = GL_RGB;
+			}
+			else if (num_channels == 4)
+			{
+				if (linearize)
+					source_format = GL_SRGB_ALPHA;
+				else
+					source_format = GL_RGBA;
+				format = GL_RGB;
+			}
+
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, source_format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap texture failed to load at path: " << filename << std::endl;
+			stbi_image_free(data);
+		}
+	}
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
 
 int main()
 {
@@ -129,8 +192,23 @@ int main()
 	unsigned int camera_loc = shader->uniformLoc("camera");
 
 	unsigned int dragon_texture = textureFromFile("Objects/Stanford_Dragon/DefaultMaterial_baseColor.jpg");
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, dragon_texture);
 	shader->setInt("dragon_texture", 0);
+
+	std::vector<std::string> faces
+	{
+		"right.jpg",
+		"left.jpg",
+		"top.jpg",
+		"bottom.jpg",
+		"front.jpg",
+		"back.jpg"
+	};
+	unsigned int cubemap_texture = CubemapFromFile(faces, "skybox", false);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
+	shader->setInt("cubemap_texture", 1);
 
 	const unsigned int num_spheres = 64;
 	/*glm::vec3 cols[] = {
