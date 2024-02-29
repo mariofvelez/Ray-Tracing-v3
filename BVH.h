@@ -160,7 +160,7 @@ public:
 		scene->num_nodes++;
 
 		int prim_count = end - start;
-		if (prim_count == 4)
+		if (prim_count <= 4)
 		{
 			// create leaf node
 			int prim_offset = ordered_prims.size();
