@@ -38,14 +38,13 @@ unsigned int textureFromFile(const std::string& filename, unsigned int texture_t
 	{
 		glBindTexture(texture_type, textureID);
 		glTexImage2D(texture_type, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(texture_type);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glTexParameteri(texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		stbi_image_free(data);
@@ -130,8 +129,8 @@ int main()
 
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	const int screen_width = 900;
-	const int screen_height = 600;
+	const int screen_width = 1200;
+	const int screen_height = 800;
 
 	GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "Ray Tracing v3", NULL, NULL);
 	if (window == NULL)
@@ -191,12 +190,12 @@ int main()
 
 	unsigned int camera_loc = shader->uniformLoc("camera");
 
-	unsigned int dragon_texture = textureFromFile("Objects/Stanford_Dragon/DefaultMaterial_baseColor.jpg");
 	glActiveTexture(GL_TEXTURE0);
+	unsigned int dragon_texture = textureFromFile("Objects/Stanford_Dragon/DefaultMaterial_baseColor.jpg");
 	glBindTexture(GL_TEXTURE_2D, dragon_texture);
 	shader->setInt("dragon_texture", 0);
 
-	std::vector<std::string> faces
+	/*std::vector<std::string> faces
 	{
 		"right.jpg",
 		"left.jpg",
@@ -208,7 +207,12 @@ int main()
 	unsigned int cubemap_texture = CubemapFromFile(faces, "skybox", false);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
-	shader->setInt("cubemap_texture", 1);
+	shader->setInt("cubemap_texture", 1);*/
+
+	glActiveTexture(GL_TEXTURE1);
+	unsigned int skybox_texture = textureFromFile("cape_hill.jpg");
+	glBindTexture(GL_TEXTURE_2D, skybox_texture);
+	shader->setInt("skybox_texture", 1);
 
 	const unsigned int num_spheres = 64;
 	/*glm::vec3 cols[] = {
@@ -245,12 +249,19 @@ int main()
 		shader->setVec3("spheres[" + std::to_string(i) + "].col", col);
 		shader->setFloat("spheres[" + std::to_string(i) + "].radius", radius);*/
 
+
+
 		//scene->loadObject("Objects/icosahedron.obj", pos);
 	}
 	dlogln("loading object");
-	scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 1.0f));/*
-	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, 10.0f, 2.0f));
-	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, -10.0f, 2.0f));*/
+	//scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
+	scene->loadObject("Objects/quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
+	scene->loadObject("Objects/icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
+	
+	/*scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, 10.0f, 2.0f), glm::vec3(1.0f));
+	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, -10.0f, 2.0f), glm::vec3(1.0f));*/
 	
 	/*scene.loadObject("Objects/icosahedron.obj", glm::vec3(-1.0f, 0.0f, 2.0f));
 	scene.loadObject("Objects/icosahedron.obj", glm::vec3(1.0f, 1.0f, 1.0f));*/
@@ -270,6 +281,8 @@ int main()
 	debug_end(glfwGetTime(), 0);
 
 	dlogln("BVH build time: " << debug_time(0));
+
+	int curr_frame = 1;
 
 	float delta_time = 0.0f;
 	float last_frame = 0.0f;
@@ -304,6 +317,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		shader->use();
+		shader->setInt("curr_frame", curr_frame);
 		glBindVertexArray(quadVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -311,6 +325,8 @@ int main()
 		glfwPollEvents();
 
 		debug_end(glfwGetTime(), 0);
+
+		curr_frame++;
 
 		delta_time_list[dt_index] = debug_time(0);
 		dt_index++;

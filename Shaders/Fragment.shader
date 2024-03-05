@@ -17,6 +17,11 @@ struct Node
 	vec3 max;
 };
 
+struct Material
+{
+	vec3 albedo;
+};
+
 layout(std430, binding = 0) buffer sceneBuffer
 {
 	vec3 vertices[100000];
@@ -64,6 +69,18 @@ struct Plane
 	vec3 normal;
 	vec3 col;
 };
+
+uint pcg_hash(uint input)
+{
+	uint state = input * 747796705u + 2891336453u;
+	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	return (word >> 22u) ^ word;
+}
+
+float rand_float(uint seed)
+{
+	return float(seed) / float(0xffffffffu);
+}
 
 //float intersect(Ray ray, Sphere sphere)
 //{
@@ -147,16 +164,18 @@ bool intersect(Ray ray, Node aabb)
 }
 
 //uniform Sphere spheres[100];
-const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.2, 0.2, 0.2));
+const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5));
 uniform int num_nodes;
+uniform int curr_frame;
 uniform sampler2D dragon_texture;
-uniform samplerCube cubemap_texture;
+uniform sampler2D skybox_texture;
+const float pi = 3.14189265;
 
 Ray traceRay(Ray ray)
 {
 	float dist = 999999.9;
-	vec3 sky_dir = vec3(ray.dir.x, ray.dir.z, ray.dir.y);
-	vec3 col = texture(cubemap_texture, sky_dir).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
+	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / pi, (asin(ray.dir.z) + pi/2.0) / pi);
+	vec3 col = texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
 	/*for (int i = 0; i < 100; ++i)
@@ -210,7 +229,7 @@ Ray traceRay(Ray ray)
 						//	vertices[indices[tri + 1]] - vertices[indices[tri]]);
 						normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
 						normal = -normalize(normal);
-						col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
+						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
 						terminate = false;
 					}
 				}
@@ -255,17 +274,24 @@ Ray traceRay(Ray ray)
 
 void main()
 {
+	ivec2 screen_coord = ivec2(int((TexCoord.x + 1.0) * 600), int((TexCoord.y + 1.0) * 400));
+	uint seed = uint(screen_coord.y * 1200 + screen_coord.x + curr_frame * 1200 * 800);
+
 	vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
-	vec4 ray_end = vec4((TexCoord.x - 0.5) * (9.0/6.0), TexCoord.y - 0.5, -1.0, 1.0);
+	vec4 ray_end = vec4((TexCoord.x - 0.5) * (3.0/2.0), TexCoord.y - 0.5, -1.0, 1.0);
 
 	vec3 start = (camera * ray_start).xyz;
 	vec3 end = (camera * ray_end).xyz;
 
 	vec3 dir = normalize(end - start);
-	Ray ray = Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
-	ray.dir = normalize(ray.dir);
+	Ray ray; //= Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
+	ray.start = start;
+	ray.dir = dir;
+	ray.inv = 1.0 / dir;
+	ray.col = vec3(1.0);
+	ray.terminate = false;
 
-	for (uint i = 0; i < 3; ++i)
+	for (uint i = 0; i < 4; ++i)
 	{
 		ray = traceRay(ray);
 		if (ray.terminate)
@@ -282,6 +308,9 @@ void main()
 			bvh_col[nodes[i].axis] += 0.02;
 		}
 	}*/
-	vec3 d = vec3(dir.x, dir.z, dir.y);
+
+	seed = pcg_hash(seed);
+
+	vec3 d = vec3(rand_float(seed));
 	FragColor = vec4(ray.col, 1.0);
 }

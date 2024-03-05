@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 
+#include "Material.h"
 #include "Shader.h"
 
 struct Mesh
@@ -51,6 +52,8 @@ public:
 	unsigned int data_buffer;
 	unsigned int bvh_buffer;
 
+	std::vector<Material> materials;
+
 	Mesh mesh;
 	int num_nodes;
 	Node nodes[40000];
@@ -64,8 +67,11 @@ public:
 		}
 	}
 
-	void loadObject(const std::string& filename, glm::vec3 offset)
+	void loadObject(const std::string& filename, glm::vec3 offset, glm::vec3 scale)
 	{
+		glm::vec4 offs = glm::vec4(offset.x, offset.y, offset.z, 0.0f);
+		glm::vec4 sc   = glm::vec4(scale.x, scale.y, scale.z, 1.0f);
+
 		std::string text;
 		std::ifstream file(filename);
 
@@ -87,11 +93,11 @@ public:
 				if (tokens[0] == "v")
 				{
 					// add vertex
-					glm::vec4 v = glm::vec4(std::stof(tokens[1]) + offset.x,
-											-std::stof(tokens[3]) + offset.y,
-											std::stof(tokens[2]) + offset.z, 1.0f);
-					v *= 0.1f;
-					mesh.vertices[mesh.vertex_size] = v;
+					glm::vec4 v = glm::vec4(std::stof(tokens[1]),
+											-std::stof(tokens[3]),
+											std::stof(tokens[2]), 1.0f);
+					
+					mesh.vertices[mesh.vertex_size] = v * sc + offs;
 					mesh.vertex_size++;
 
 					//std::cout << "v: " << v.x << ", " << v.y << ", " << v.z << std::endl;
