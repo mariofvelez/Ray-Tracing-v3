@@ -7,6 +7,28 @@ in vec2 TexCoord;
 uniform mat4 camera;
 uniform vec3 camera_pos;
 
+struct Material
+{
+	vec3 albedo;
+	float roughness;
+
+	vec3 emission;
+	vec3 emission_power;
+};
+
+struct Primitive
+{
+	uint vertex_a;
+	uint vertex_b;
+	uint vertex_c;
+
+	uint normal_a;
+	uint normal_b;
+	uint normal_c;
+
+	uint material;
+};
+
 struct Node
 {
 	int axis;
@@ -17,10 +39,6 @@ struct Node
 	vec3 max;
 };
 
-struct Material
-{
-	vec3 albedo;
-};
 
 layout(std430, binding = 0) buffer sceneBuffer
 {
@@ -77,9 +95,21 @@ uint pcg_hash(uint input)
 	return (word >> 22u) ^ word;
 }
 
-float rand_float(uint seed)
+float rand_float(inout uint seed)
 {
+	seed = pcg_hash(seed);
 	return float(seed) / float(0xffffffffu);
+}
+
+vec3 on_unit_hemisphere(vec3 normal, inout uint seed)
+{
+	float x = rand_float(seed);
+	float y = rand_float(seed);
+	float z = rand_float(seed);
+	vec3 vec = normalize(vec3(x * 2.0 - 1.0, y * 2.0 - 1.0, z * 2.0 - 1.0));
+	if (dot(vec, -normal) < 0.0)
+		vec *= -1.0;
+	return vec;
 }
 
 //float intersect(Ray ray, Sphere sphere)
@@ -117,7 +147,7 @@ vec3 intersect(Ray ray, int tri)
 
 	float det = dot(e1, ray_cross_e2);
 
-	if (det > -0.00001 && det < 0.00001f)
+	if (det > -0.0000001 && det < 0.0000001)
 		return vec3(0.0);
 
 	float inv_det = 1.0 / det;
@@ -171,11 +201,11 @@ uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
 
-Ray traceRay(Ray ray)
+Ray traceRay(Ray ray, inout uint seed)
 {
 	float dist = 999999.9;
-	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / pi, (asin(ray.dir.z) + pi/2.0) / pi);
-	vec3 col = texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
+	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / (pi*2.0), (asin(ray.dir.z) + pi/2.0) / pi);
+	vec3 col = vec3(1.0);// texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
 	/*for (int i = 0; i < 100; ++i)
@@ -221,14 +251,14 @@ Ray traceRay(Ray ray)
 						dist = intersection.x;
 						float u = intersection.y;
 						float v = intersection.z;
-						vec2 a = textures[indices[tri]];
+						/*vec2 a = textures[indices[tri]];
 						vec2 b = textures[indices[tri + 1]];
-						vec2 c = textures[indices[tri + 2]];
-						col = texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz;// vec3(1.0, 0.82, 0.11);vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
-						//normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
-						//	vertices[indices[tri + 1]] - vertices[indices[tri]]);
-						normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
-						normal = -normalize(normal);
+						vec2 c = textures[indices[tri + 2]];*/
+						col = vec3(1.0, 0.82, 0.11); //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
+							vertices[indices[tri + 1]] - vertices[indices[tri]]);
+						//normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
+						normal = normalize(normal);
 						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
 						terminate = false;
 					}
@@ -268,7 +298,7 @@ Ray traceRay(Ray ray)
 		col = plane.col;
 		terminate = false;
 	}*/
-	vec3 dir = normalize(reflect(ray.dir, normal));
+	vec3 dir = on_unit_hemisphere(normal, seed); //normalize(reflect(ray.dir, normal));
 	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
 
@@ -277,40 +307,45 @@ void main()
 	ivec2 screen_coord = ivec2(int((TexCoord.x + 1.0) * 600), int((TexCoord.y + 1.0) * 400));
 	uint seed = uint(screen_coord.y * 1200 + screen_coord.x + curr_frame * 1200 * 800);
 
-	vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
-	vec4 ray_end = vec4((TexCoord.x - 0.5) * (3.0/2.0), TexCoord.y - 0.5, -1.0, 1.0);
-
-	vec3 start = (camera * ray_start).xyz;
-	vec3 end = (camera * ray_end).xyz;
-
-	vec3 dir = normalize(end - start);
-	Ray ray; //= Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
-	ray.start = start;
-	ray.dir = dir;
-	ray.inv = 1.0 / dir;
-	ray.col = vec3(1.0);
-	ray.terminate = false;
-
-	for (uint i = 0; i < 4; ++i)
+	int num_samples = 8;
+	for (uint j = 0; j < num_samples; ++j)
 	{
-		ray = traceRay(ray);
-		if (ray.terminate)
-			break;
-	}
+		vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
+		vec4 ray_end = vec4((TexCoord.x - 0.5) * (3.0 / 2.0) + rand_float(seed) / 1200.0, TexCoord.y - 0.5 + rand_float(seed) / 800.0, -1.0, 1.0);
 
-	/*vec3 bvh_col = vec3(0.0, 0.0, 0.0);
+		vec3 start = (camera * ray_start).xyz;
+		vec3 end = (camera * ray_end).xyz;
 
-	Ray new_ray = Ray(start, normalize(end - start), 1.0 / normalize(end - start), vec3(1.0, 1.0, 1.0), false);
-	for (int i = 0; i < num_nodes; ++i)
-	{
-		if (intersect(new_ray, nodes[i]))
+		vec3 dir = normalize(end - start);
+		Ray ray; //= Ray(start, dir, 1.0 / dir, vec3(1.0, 1.0, 1.0), false);
+		ray.start = start;
+		ray.dir = dir;
+		ray.inv = 1.0 / dir;
+		ray.col = vec3(1.0);
+		ray.terminate = false;
+
+		for (uint i = 0; i < 2; ++i)
 		{
-			bvh_col[nodes[i].axis] += 0.02;
+			ray = traceRay(ray, seed);
+			if (ray.terminate)
+				break;
 		}
-	}*/
 
-	seed = pcg_hash(seed);
+		/*vec3 bvh_col = vec3(0.0, 0.0, 0.0);
 
-	vec3 d = vec3(rand_float(seed));
-	FragColor = vec4(ray.col, 1.0);
+		Ray new_ray = Ray(start, normalize(end - start), 1.0 / normalize(end - start), vec3(1.0, 1.0, 1.0), false);
+		for (int i = 0; i < num_nodes; ++i)
+		{
+			if (intersect(new_ray, nodes[i]))
+			{
+				bvh_col[nodes[i].axis] += 0.02;
+			}
+		}*/
+
+
+
+		vec3 d = vec3(rand_float(seed), rand_float(seed), rand_float(seed));
+		FragColor += vec4(ray.col, 1.0);
+	}
+	FragColor /= float(num_samples);
 }

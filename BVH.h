@@ -121,7 +121,7 @@ public:
 		for (unsigned int i = 0; i < ordered_prims.size(); ++i)
 		{
 			int index = ordered_prims[i];
-			new_indices[i * 3] = scene->mesh.indices[index * 3];
+			new_indices[i * 3] = scene->mesh.indices[index * 3]; // primitives[index].index * 3;
 			new_indices[i * 3 + 1] = scene->mesh.indices[index * 3 + 1];
 			new_indices[i * 3 + 2] = scene->mesh.indices[index * 3 + 2];
 		}

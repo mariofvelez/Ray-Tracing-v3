@@ -69,6 +69,11 @@ public:
 
 	void loadObject(const std::string& filename, glm::vec3 offset, glm::vec3 scale)
 	{
+		glm::vec4 position[1000];
+		glm::vec4 normal[1000];
+		int position_index = 0;
+		int normal_index = 0;
+
 		glm::vec4 offs = glm::vec4(offset.x, offset.y, offset.z, 0.0f);
 		glm::vec4 sc   = glm::vec4(scale.x, scale.y, scale.z, 1.0f);
 
@@ -94,52 +99,69 @@ public:
 				{
 					// add vertex
 					glm::vec4 v = glm::vec4(std::stof(tokens[1]),
-											-std::stof(tokens[3]),
-											std::stof(tokens[2]), 1.0f);
-					
-					mesh.vertices[mesh.vertex_size] = v * sc + offs;
-					mesh.vertex_size++;
+						-std::stof(tokens[3]),
+						std::stof(tokens[2]), 1.0f);
+
+					position[position_index] = v * sc + offs;
+					position_index++;
+					//mesh.vertices[mesh.vertex_size] = v * sc + offs;
+					//mesh.vertex_size++;
 
 					//std::cout << "v: " << v.x << ", " << v.y << ", " << v.z << std::endl;
 				}
 				else if (tokens[0] == "vn")
 				{
 					glm::vec4 v = glm::vec4(std::stof(tokens[1]),
-											-std::stof(tokens[3]),
-											std::stof(tokens[2]), 1.0f);
-					mesh.normals[mesh.normal_size] = v;
-					mesh.normal_size++;
+						-std::stof(tokens[3]),
+						std::stof(tokens[2]), 1.0f);
+
+					normal[normal_index] = v;
+					normal_index++;
+					//mesh.normals[mesh.normal_size] = v;
+					//mesh.normal_size++;
 				}
 				else if (tokens[0] == "vt")
 				{
 					glm::vec2 v = glm::vec2(std::stof(tokens[1]), std::stof(tokens[2]));
 
-					mesh.texture[mesh.texture_size] = v;
-					mesh.texture_size++;
+					/*mesh.texture[mesh.texture_size] = v;
+					mesh.texture_size++;*/
 				}
 				else if (tokens[0] == "f")
 				{
 					// add indices
-					int i1 = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) + index_offset;
-					int i2 = std::stoi(tokens[2].substr(0, tokens[2].find('/'))) + index_offset;
-					int i3 = std::stoi(tokens[3].substr(0, tokens[3].find('/'))) + index_offset;
+					int i1 = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
+					int i2 = std::stoi(tokens[2].substr(0, tokens[2].find('/'))) - 1;
+					int i3 = std::stoi(tokens[3].substr(0, tokens[3].find('/'))) - 1;
 
-					mesh.indices[mesh.index_size] = i1 - 1;
-					mesh.indices[mesh.index_size + 1] = i2 - 1;
-					mesh.indices[mesh.index_size + 2] = i3 - 1;
+					std::string index_0_info[3], index_1_info[3], index_2_info[3];
+					index_0_info[0] = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
+
+					mesh.indices[mesh.index_size] = mesh.index_size;// i1 + index_offset;
+					mesh.indices[mesh.index_size + 1] = mesh.index_size + 1; //i2 + index_offset;
+					mesh.indices[mesh.index_size + 2] = mesh.index_size + 2; //i3 + index_offset;
+
+					mesh.vertices[mesh.vertex_size] = position[i1];
+					mesh.vertices[mesh.vertex_size + 1] = position[i2];
+					mesh.vertices[mesh.vertex_size + 2] = position[i3];
+
+					mesh.normals[mesh.normal_size] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+					mesh.normals[mesh.normal_size + 1] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+					mesh.normals[mesh.normal_size + 2] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
 					//std::cout << "f: " << i1 << ", " << i2 << ", " << i3 << std::endl;
 
-					if (token_length == 5) // quad
-					{
-						int i4 = std::stoi(tokens[4].substr(0, tokens[4].find('/'))) + index_offset;
-						mesh.indices[mesh.index_size + 3] = i3 - 1;
-						mesh.indices[mesh.index_size + 4] = i4 - 1;
-						mesh.indices[mesh.index_size + 5] = i1 - 1;
-						mesh.index_size += 3;
-					}
+					//if (token_length == 5) // quad
+					//{
+					//	int i4 = std::stoi(tokens[4].substr(0, tokens[4].find('/'))) + index_offset;
+					//	mesh.indices[mesh.index_size + 3] = i3 - 1;
+					//	mesh.indices[mesh.index_size + 4] = i4 - 1;
+					//	mesh.indices[mesh.index_size + 5] = i1 - 1;
+					//	mesh.index_size += 3;
+					//}
 					mesh.index_size += 3;
-
+					mesh.vertex_size += 3;
+					mesh.normal_size += 3;
 				}
 			}
 		}
