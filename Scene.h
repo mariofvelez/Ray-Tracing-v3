@@ -222,6 +222,22 @@ public:
 					p.material = curr_material;
 					num_primitives++;
 
+					if (token_length == 5)
+					{
+						glm::ivec3 i4 = parseFaceIndex(tokens[4]);
+
+						primitives[num_primitives] = Primitive();
+						Primitive& p = primitives[num_primitives];
+						p.vertex_a = i3.x + vertex_offset;
+						p.vertex_b = i4.x + vertex_offset;
+						p.vertex_c = i1.x + vertex_offset;
+						p.normal_a = i3.z + normal_offset;
+						p.normal_b = i4.z + normal_offset;
+						p.normal_c = i1.z + normal_offset;
+						p.material = curr_material;
+						num_primitives++;
+					}
+
 					//// add indices
 					//int i1 = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
 					//int i2 = std::stoi(tokens[2].substr(0, tokens[2].find('/'))) - 1;
@@ -253,7 +269,7 @@ public:
 					mesh.vertex_size += 3;
 					mesh.normal_size += 3;*/
 				}
-				else if (tokens[0] == "mtlib")
+				else if (tokens[0] == "mtlib" || tokens[0] == "mtllib")
 				{
 					// check if mtl file was already loaded
 					if (!checkLoadedMaterialFile(tokens[1]))

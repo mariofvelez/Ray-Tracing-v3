@@ -151,7 +151,7 @@ Ray traceRay(Ray ray, inout uint seed)
 
 	// set default color to skybox color
 	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi / 2.0) / (pi * 2.0), (asin(ray.dir.z) + pi / 2.0) / pi);
-	vec3 col = texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
+	vec3 col = texture(skybox_texture, tex_coord).xyz;
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
 	
@@ -174,17 +174,13 @@ Ray traceRay(Ray ray, inout uint seed)
 					if (intersection.x > 0.0 && intersection.x < dist)
 					{
 						dist = intersection.x;
+						col = materials[prim.material].albedo;
+
 						float u = intersection.y;
 						float v = intersection.z;
-						/*vec2 a = textures[indices[tri]];
-						vec2 b = textures[indices[tri + 1]];
-						vec2 c = textures[indices[tri + 2]];*/
-						col = materials[prim.material].albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
-						/*normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
-							vertices[indices[tri + 1]] - vertices[indices[tri]]);*/
 						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
 						normal = normalize(normal);
-						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
+
 						terminate = false;
 					}
 				}

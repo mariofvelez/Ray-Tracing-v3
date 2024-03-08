@@ -199,7 +199,7 @@ int main()
 
 
 	dlogln("creating shader");
-	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
+	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
 	shader->use();
 
 	unsigned int camera_loc = shader->uniformLoc("camera");
@@ -270,12 +270,13 @@ int main()
 	dlogln("loading object");
 	//scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
 	scene->loadObject("Objects/", "quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/turtle/", "scene.obj", glm::vec3(0.0f), glm::vec3(1.0f));
+	/*scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
 	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));*/
 
-	dlogln("Primitives before:");
-	scene->printPrimitives();
+	/*dlogln("Primitives before:");
+	scene->printPrimitives();*/
 
 	for (unsigned int i = 0; i < scene->materials.size(); ++i)
 	{
@@ -300,8 +301,8 @@ int main()
 	dlogln("creating BVH");
 	scene->updateBVH(shader);
 
-	dlogln("Primitives after:");
-	scene->printPrimitives();
+	/*dlogln("Primitives after:");
+	scene->printPrimitives();*/
 
 	dlogln("sending tri data to GPU");
 	scene->updateBuffer();
