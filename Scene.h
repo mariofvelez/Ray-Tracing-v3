@@ -53,6 +53,7 @@ public:
 	unsigned int bvh_buffer;
 
 	std::vector<Material> materials;
+	std::vector<std::string> material_names;
 
 	Mesh mesh;
 	int num_nodes;

@@ -11,6 +11,7 @@
 #include "Shader.h"
 #include "Scene.h"
 #include "BVH.h"
+#include "Material.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -184,8 +185,21 @@ int main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
+
+	MaterialLoader mtl_loader;
+	std::vector<Material> materials;
+	mtl_loader.loadMaterials("Objects/turtle/material.mtl", &materials);
+
+	for (unsigned int i = 0; i < materials.size(); ++i)
+	{
+		Material& mat = materials[i];
+		dlogln("Material:");
+		dlogln("  col: " << mat.albedo.r << ", " << mat.albedo.g << ", " << mat.albedo.b);
+	}
+
+
 	dlogln("creating shader");
-	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/Fragment.shader");
+	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
 	shader->use();
 
 	unsigned int camera_loc = shader->uniformLoc("camera");
