@@ -7,3 +7,5 @@ x64
 x86
 stb_image.*
 skybox
+imgui3
+imgui.ini

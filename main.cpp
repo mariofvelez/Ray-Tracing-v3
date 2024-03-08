@@ -1,5 +1,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include "imgui3/imgui.h"
+#include "imgui3/imgui_impl_glfw.h"
+#include "imgui3/imgui_impl_opengl3.h"
+
 #include <iostream>
 #include <stdlib.h>
 #include <random>
@@ -199,7 +204,7 @@ int main()
 
 
 	dlogln("creating shader");
-	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
+	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
 	shader->use();
 
 	unsigned int camera_loc = shader->uniformLoc("camera");
@@ -315,6 +320,17 @@ int main()
 
 	dlogln("BVH build time: " << debug_time(0));
 
+
+	// imgui
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init();
+
 	int curr_frame = 1;
 
 	float delta_time = 0.0f;
@@ -328,6 +344,11 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::ShowDemoWindow();
+
 		processInput(window);
 
 		float current_frame = (float)glfwGetTime();
@@ -354,6 +375,9 @@ int main()
 		glBindVertexArray(quadVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
@@ -375,6 +399,10 @@ int main()
 	delete(camera);
 	delete(shader);
 	delete(scene);
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	glfwTerminate();
 	return 0;
