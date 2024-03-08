@@ -199,7 +199,7 @@ int main()
 
 
 	dlogln("creating shader");
-	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
+	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
 	shader->use();
 
 	unsigned int camera_loc = shader->uniformLoc("camera");

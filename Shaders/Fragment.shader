@@ -190,7 +190,7 @@ bool intersect(Ray ray, Node aabb)
 	tmin = max(tmin, min(tz1, tz2));
 	tmax = min(tmax, max(tz1, tz2));
 
-	return tmax > tmin;
+	return tmax > tmin && tmax > 0.0;
 }
 
 //uniform Sphere spheres[100];

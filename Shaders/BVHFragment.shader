@@ -7,6 +7,12 @@ in vec2 TexCoord;
 uniform mat4 camera;
 uniform vec3 camera_pos;
 
+uniform int num_nodes;
+uniform int curr_frame;
+uniform sampler2D dragon_texture;
+uniform sampler2D skybox_texture;
+const float pi = 3.14189265;
+
 struct Node
 {
 	int axis;
@@ -17,7 +23,7 @@ struct Node
 	vec3 max;
 };
 
-layout(std430, binding = 1) buffer bvhBuffer
+layout(std430, binding = 3) buffer bvhBuffer
 {
 	Node nodes[];
 };
@@ -51,13 +57,8 @@ bool intersect(Ray ray, Node aabb)
 	tmin = max(tmin, min(tz1, tz2));
 	tmax = min(tmax, max(tz1, tz2));
 
-	return tmax > tmin;
+	return tmax > tmin && tmax > 0.0;
 }
-uniform int num_nodes;
-uniform int curr_frame;
-uniform sampler2D dragon_texture;
-uniform sampler2D skybox_texture;
-const float pi = 3.14189265;
 
 void main()
 {
@@ -81,7 +82,7 @@ void main()
 	{
 		if (intersect(ray, nodes[i]))
 		{
-			bvh_col[nodes[i].axis] += 0.1;
+			bvh_col[nodes[i].axis] += 0.02;
 		}
 	}
 	FragColor = vec4(bvh_col, 1.0);
