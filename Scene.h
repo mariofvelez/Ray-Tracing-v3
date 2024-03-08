@@ -6,27 +6,45 @@
 
 #include <glm/glm.hpp>
 
+#include "Debug.h"
 #include "Material.h"
 #include "Shader.h"
 
-struct Mesh
+// all vertex, normal, and texture data for the scene
+struct SceneData
 {
 	glm::vec4 vertices[100000];
 	glm::vec4 normals[100000];
 	glm::vec2 texture[100000];
-	int indices[100000];
 	int vertex_size = 0;
 	int normal_size = 0;
 	int texture_size = 0;
-	int index_size = 0;
 };
 
+// primitive triangle data
+struct Primitive
+{
+	// indices of each vertex
+	unsigned int vertex_a;
+	unsigned int vertex_b;
+	unsigned int vertex_c;
+
+	// indices of each vertex normal
+	unsigned int normal_a;
+	unsigned int normal_b;
+	unsigned int normal_c;
+
+	// index ID of the material
+	unsigned int material;
+};
+
+// flattened BVH node
 struct Node
 {
 	int axis;
 	int left;
-	int num_tris;
-	int tri_index;
+	int prim_count;
+	int prim_index;
 	glm::vec4 min;
 	glm::vec4 max;
 };
@@ -47,41 +65,100 @@ struct Plane
 
 class Scene
 {
+private:
+	bool checkLoadedMaterialFile(std::string& filename)
+	{
+		for (unsigned int i = 0; i < loaded_material_files.size(); ++i)
+		{
+			if (loaded_material_files[i] == filename)
+				return true;
+		}
+		return false;
+	}
+	void setCurrentMaterial(std::string& material_name, unsigned int* curr_material)
+	{
+		*curr_material = 0u;
+		for (unsigned int i = 0; i < material_names.size(); ++i)
+		{
+			if (material_names[i] == material_name)
+			{
+				*curr_material = i;
+				return;
+			}
+		}
+	}
+	glm::ivec3 parseFaceIndex(std::string& face_data)
+	{
+		glm::ivec3 data = glm::ivec3(0, 0, 0); // vertex, texture, normal
+
+		unsigned int slash_count = 0;
+		unsigned int slash_indices[2] = { 0, 0 };
+		// traverse string for '/' indices
+		for (unsigned int i = 0; i < face_data.size(); ++i)
+		{
+			if (face_data[i] == '/')
+			{
+				slash_indices[slash_count] = i;
+				slash_count++;
+				if (slash_count == 2)
+					break;
+			}
+		}
+
+		if (slash_count == 0)
+		{
+			data[0] = std::stoi(face_data);
+		}
+		else if (slash_count == 2)
+		{
+			data[0] = std::stoi(face_data.substr(0, slash_indices[0])) - 1;
+			if (slash_indices[1] - slash_indices[0] > 1)
+				data[1] = std::stoi(face_data.substr(slash_indices[0] + 1, slash_indices[1])) - 1;
+			data[2] = std::stoi(face_data.substr(slash_indices[1] + 1, face_data.size())) - 1;
+		}
+		return data;
+	}
 public:
 
 	unsigned int data_buffer;
+	unsigned int material_buffer;
+	unsigned int primitive_buffer;
 	unsigned int bvh_buffer;
 
+	std::vector<std::string> loaded_material_files;
 	std::vector<Material> materials;
 	std::vector<std::string> material_names;
 
-	Mesh mesh;
+	SceneData scene_data;
+
+	int num_primitives;
+	Primitive primitives[10000];
+
 	int num_nodes;
 	Node nodes[40000];
 
 	Scene() : num_nodes(0)
 	{
-		for (unsigned int i = 0; i < 100; ++i)
-		{
-			mesh.indices[i] = 0;
-			mesh.vertices[i] = glm::vec4(0.0f);
-		}
+		// creating default material
+		materials.emplace_back(Material());
+		Material& default_material = materials[0];
+		default_material.albedo = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+		material_names.emplace_back("Default_Material");
 	}
 
-	void loadObject(const std::string& filename, glm::vec3 offset, glm::vec3 scale)
+	void loadObject(const std::string& path, const std::string& filename, glm::vec3 offset, glm::vec3 scale)
 	{
-		glm::vec4 position[1000];
-		glm::vec4 normal[1000];
-		int position_index = 0;
-		int normal_index = 0;
+		unsigned int curr_material = 0;
 
 		glm::vec4 offs = glm::vec4(offset.x, offset.y, offset.z, 0.0f);
 		glm::vec4 sc   = glm::vec4(scale.x, scale.y, scale.z, 1.0f);
 
 		std::string text;
-		std::ifstream file(filename);
+		std::ifstream file(path + filename);
 
-		int index_offset = mesh.vertex_size;
+		unsigned int vertex_offset = scene_data.vertex_size;
+		unsigned int texture_offset = scene_data.texture_size;
+		unsigned int normal_offset = scene_data.normal_size;
 
 		while (std::getline(file, text))
 		{
@@ -103,8 +180,8 @@ public:
 						-std::stof(tokens[3]),
 						std::stof(tokens[2]), 1.0f);
 
-					position[position_index] = v * sc + offs;
-					position_index++;
+					scene_data.vertices[scene_data.vertex_size] = v * sc + offs;
+					scene_data.vertex_size++;
 					//mesh.vertices[mesh.vertex_size] = v * sc + offs;
 					//mesh.vertex_size++;
 
@@ -116,8 +193,8 @@ public:
 						-std::stof(tokens[3]),
 						std::stof(tokens[2]), 1.0f);
 
-					normal[normal_index] = v;
-					normal_index++;
+					scene_data.normals[scene_data.normal_size] = v;
+					scene_data.normal_size++;
 					//mesh.normals[mesh.normal_size] = v;
 					//mesh.normal_size++;
 				}
@@ -130,25 +207,37 @@ public:
 				}
 				else if (tokens[0] == "f")
 				{
-					// add indices
-					int i1 = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
-					int i2 = std::stoi(tokens[2].substr(0, tokens[2].find('/'))) - 1;
-					int i3 = std::stoi(tokens[3].substr(0, tokens[3].find('/'))) - 1;
+					glm::ivec3 i1 = parseFaceIndex(tokens[1]);
+					glm::ivec3 i2 = parseFaceIndex(tokens[2]);
+					glm::ivec3 i3 = parseFaceIndex(tokens[3]);
 
-					std::string index_0_info[3], index_1_info[3], index_2_info[3];
-					index_0_info[0] = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
+					primitives[num_primitives] = Primitive();
+					Primitive& p = primitives[num_primitives];
+					p.vertex_a = i1.x + vertex_offset;
+					p.vertex_b = i2.x + vertex_offset;
+					p.vertex_c = i3.x + vertex_offset;
+					p.normal_a = i1.z + normal_offset;
+					p.normal_b = i2.z + normal_offset;
+					p.normal_c = i3.z + normal_offset;
+					p.material = curr_material;
+					num_primitives++;
 
-					mesh.indices[mesh.index_size] = mesh.index_size;// i1 + index_offset;
-					mesh.indices[mesh.index_size + 1] = mesh.index_size + 1; //i2 + index_offset;
-					mesh.indices[mesh.index_size + 2] = mesh.index_size + 2; //i3 + index_offset;
+					//// add indices
+					//int i1 = std::stoi(tokens[1].substr(0, tokens[1].find('/'))) - 1;
+					//int i2 = std::stoi(tokens[2].substr(0, tokens[2].find('/'))) - 1;
+					//int i3 = std::stoi(tokens[3].substr(0, tokens[3].find('/'))) - 1;
 
-					mesh.vertices[mesh.vertex_size] = position[i1];
-					mesh.vertices[mesh.vertex_size + 1] = position[i2];
-					mesh.vertices[mesh.vertex_size + 2] = position[i3];
+					//mesh.indices[mesh.index_size] = mesh.index_size;// i1 + index_offset;
+					//mesh.indices[mesh.index_size + 1] = mesh.index_size + 1; //i2 + index_offset;
+					//mesh.indices[mesh.index_size + 2] = mesh.index_size + 2; //i3 + index_offset;
 
-					mesh.normals[mesh.normal_size] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
-					mesh.normals[mesh.normal_size + 1] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
-					mesh.normals[mesh.normal_size + 2] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+					//mesh.vertices[mesh.vertex_size] = position[i1];
+					//mesh.vertices[mesh.vertex_size + 1] = position[i2];
+					//mesh.vertices[mesh.vertex_size + 2] = position[i3];
+
+					//mesh.normals[mesh.normal_size] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+					//mesh.normals[mesh.normal_size + 1] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+					//mesh.normals[mesh.normal_size + 2] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
 					//std::cout << "f: " << i1 << ", " << i2 << ", " << i3 << std::endl;
 
@@ -160,9 +249,26 @@ public:
 					//	mesh.indices[mesh.index_size + 5] = i1 - 1;
 					//	mesh.index_size += 3;
 					//}
-					mesh.index_size += 3;
+					/*mesh.index_size += 3;
 					mesh.vertex_size += 3;
-					mesh.normal_size += 3;
+					mesh.normal_size += 3;*/
+				}
+				else if (tokens[0] == "mtlib")
+				{
+					// check if mtl file was already loaded
+					if (!checkLoadedMaterialFile(tokens[1]))
+					{
+						loaded_material_files.push_back(tokens[1]);
+
+						// load mtl file
+						MaterialLoader mat_loader;
+						mat_loader.loadMaterials(path + tokens[1], &materials, &material_names);
+					}
+				}
+				else if (tokens[0] == "usemtl")
+				{
+					// search for material and set current material
+					setCurrentMaterial(tokens[1], &curr_material);
 				}
 			}
 		}
@@ -172,75 +278,67 @@ public:
 	void updateBuffer()
 	{
 		//std::cout << "mesh size: " << sizeof(mesh) << std::endl;
-
-		std::cout << "vertices: " << mesh.vertex_size << std::endl;
-		std::cout << "indices: " << mesh.index_size << " | triangles: " << (mesh.index_size/3) << std::endl;
+		dlogln("vertices: " << scene_data.vertex_size << " | normals: " << scene_data.normal_size << " | primitives: " << num_primitives);
+		dlogln("BVH nodes: " << num_nodes);
 
 		glGenBuffers(1, &data_buffer);
 		
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, data_buffer);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(mesh), &mesh, GL_DYNAMIC_READ);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(scene_data), &scene_data, GL_DYNAMIC_READ);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, data_buffer);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void computeAABB(int start, int len, int bvh_node)
+	void updateMaterialBuffer()
 	{
-		glm::vec3 min = glm::vec3(99999.9f);
-		glm::vec3 max = glm::vec3(-99999.9f);
+		glGenBuffers(1, &material_buffer);
 
-		for (int i = start; i < start + len; ++i)
-		{
-			for (int j = 0; j < 3; ++j)
-			{
-				glm::vec3 vertex = mesh.vertices[mesh.indices[i * 3 + j]];
-				min.x = glm::min(min.x, vertex.x);
-				min.y = glm::min(min.y, vertex.y);
-				min.z = glm::min(min.z, vertex.z);
-				max.x = glm::max(max.x, vertex.x);
-				max.y = glm::max(max.y, vertex.y);
-				max.z = glm::max(max.z, vertex.z);
-			}
-		}
-		nodes[bvh_node].min = glm::vec4(min.x, min.y, min.z, 0.0f);
-		nodes[bvh_node].max = glm::vec4(max.x, max.y, max.z, 0.0f);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, material_buffer);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Material) * materials.size(), &materials[0], GL_DYNAMIC_READ);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, material_buffer);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void computeBVH(Shader* shader)
+	void updatePrimitiveBuffer()
 	{
-		/*int node_index = 0;
-		for (unsigned int i = 0; i < mesh.index_size / 3; ++i)
-		{
-			nodes[node_index] = Node();
-			nodes[node_index].left = node_index;
-			nodes[node_index].right = node_index;
-			nodes[node_index].parent = 0;
-			nodes[node_index].tri_index = node_index;
-			computeAABB(node_index, 1, node_index);
-			
-			node_index++;
-		}
+		glGenBuffers(1, &primitive_buffer);
 
-		num_nodes = node_index;*/
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, primitive_buffer);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(primitives), &primitives, GL_DYNAMIC_READ);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, primitive_buffer);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
 
-		/*for (unsigned int i = 0; i < num_nodes; ++i)
-		{
-			std::cout << i << ": axis: " << nodes[i].axis << " | left: " << nodes[i].left << " | right: " << nodes[i].right << " | tri: " << nodes[i].tri_index;
-			if (nodes[i].tri_index != -1)
-				std::cout << " | leaf";
-			std::cout << std::endl;
-		}*/
-
+	void updateBVH(Shader* shader)
+	{
 		shader->setInt("num_nodes", num_nodes);
 
 		std::cout << "nodes: " << num_nodes << std::endl;
-		//std::cout << "size of nodes: " << sizeof(nodes) << std::endl;
 
 		glGenBuffers(1, &bvh_buffer);
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvh_buffer);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(nodes), &nodes, GL_DYNAMIC_READ);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, bvh_buffer);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, bvh_buffer);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	void printPrimitives()
+	{
+		for (unsigned int i = 0; i < num_primitives; ++i)
+		{
+			dlogln(i << ": " << primitives[i].vertex_a << ", " << primitives[i].vertex_b << ", " << primitives[i].vertex_c << " | mat: " << material_names[primitives[i].material]);
+		}
+	}
+
+	void printNodes()
+	{
+		for (unsigned int i = 0; i < num_nodes; ++i)
+		{
+			std::cout << i << ": axis: " << nodes[i].axis << " | left: " << nodes[i].left << " | prim: " << nodes[i].prim_index;
+			if (nodes[i].prim_count != -1)
+				std::cout << " | leaf";
+			std::cout << std::endl;
+		}
 	}
 };

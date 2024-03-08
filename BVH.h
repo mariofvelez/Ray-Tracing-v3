@@ -7,12 +7,12 @@
 
 #include "Scene.h"
 
-struct Primitive
+struct BVHPrimitive
 {
 	glm::vec3 min;
 	glm::vec3 max;
 	glm::vec3 centroid;
-	int index; // index into scene array
+	int index; // index into primitives array
 };
 struct BVHNode
 {
@@ -68,21 +68,35 @@ class BVH
 	BVHNode* root;
 	Scene* scene;
 
-	void computeAABB(Primitive& primitive)
+	void computeAABB(BVHPrimitive& primitive)
 	{
 		glm::vec3 min = glm::vec3(99999.9f);
 		glm::vec3 max = glm::vec3(-99999.9f);
 
-		for (int j = 0; j < 3; ++j)
-		{
-			glm::vec3 vertex = scene->mesh.vertices[scene->mesh.indices[primitive.index * 3 + j]];
-			min.x = glm::min(min.x, vertex.x);
-			min.y = glm::min(min.y, vertex.y);
-			min.z = glm::min(min.z, vertex.z);
-			max.x = glm::max(max.x, vertex.x);
-			max.y = glm::max(max.y, vertex.y);
-			max.z = glm::max(max.z, vertex.z);
-		}
+		glm::vec3 vertex = scene->scene_data.vertices[scene->primitives[primitive.index].vertex_a];
+		min.x = glm::min(min.x, vertex.x);
+		min.y = glm::min(min.y, vertex.y);
+		min.z = glm::min(min.z, vertex.z);
+		max.x = glm::max(max.x, vertex.x);
+		max.y = glm::max(max.y, vertex.y);
+		max.z = glm::max(max.z, vertex.z);
+
+		vertex = scene->scene_data.vertices[scene->primitives[primitive.index].vertex_b];
+		min.x = glm::min(min.x, vertex.x);
+		min.y = glm::min(min.y, vertex.y);
+		min.z = glm::min(min.z, vertex.z);
+		max.x = glm::max(max.x, vertex.x);
+		max.y = glm::max(max.y, vertex.y);
+		max.z = glm::max(max.z, vertex.z);
+
+		vertex = scene->scene_data.vertices[scene->primitives[primitive.index].vertex_c];
+		min.x = glm::min(min.x, vertex.x);
+		min.y = glm::min(min.y, vertex.y);
+		min.z = glm::min(min.z, vertex.z);
+		max.x = glm::max(max.x, vertex.x);
+		max.y = glm::max(max.y, vertex.y);
+		max.z = glm::max(max.z, vertex.z);
+
 		primitive.min = min;
 		primitive.max = max;
 	}
@@ -94,11 +108,11 @@ public:
 	}
 	void computeBVH()
 	{
-		std::vector<Primitive> primitives;
-		primitives.reserve(scene->mesh.index_size / 3);
+		std::vector<BVHPrimitive> primitives;
+		primitives.reserve(scene->num_primitives);
 
 		// init primitives
-		for (unsigned int i = 0; i < scene->mesh.index_size / 3; ++i)
+		for (unsigned int i = 0; i < scene->num_primitives; ++i)
 		{
 			primitives.emplace_back();
 			primitives[i].index = i;
@@ -117,21 +131,32 @@ public:
 			std::cout << "ordr: " << ordered_prims[i] << std::endl;
 		}*/
 
-		int new_indices[100000];
+		std::vector<Primitive> new_primitives;
+		new_primitives.reserve(scene->num_primitives);
 		for (unsigned int i = 0; i < ordered_prims.size(); ++i)
 		{
-			int index = ordered_prims[i];
-			new_indices[i * 3] = scene->mesh.indices[index * 3]; // primitives[index].index * 3;
-			new_indices[i * 3 + 1] = scene->mesh.indices[index * 3 + 1];
-			new_indices[i * 3 + 2] = scene->mesh.indices[index * 3 + 2];
+			new_primitives.push_back(scene->primitives[ordered_prims[i]]);
 		}
-		for (unsigned int i = 0; i < scene->mesh.index_size; ++i)
+		for (unsigned int i = 0; i < scene->num_primitives; ++i)
 		{
-			scene->mesh.indices[i] = new_indices[i];
+			scene->primitives[i] = new_primitives[i];
 		}
+
+		//int new_indices[100000];
+		//for (unsigned int i = 0; i < ordered_prims.size(); ++i)
+		//{
+		//	int index = ordered_prims[i];
+		//	new_indices[i * 3] = scene->mesh.indices[index * 3]; // primitives[index].index * 3;
+		//	new_indices[i * 3 + 1] = scene->mesh.indices[index * 3 + 1];
+		//	new_indices[i * 3 + 2] = scene->mesh.indices[index * 3 + 2];
+		//}
+		//for (unsigned int i = 0; i < scene->mesh.index_size; ++i)
+		//{
+		//	scene->mesh.indices[i] = new_indices[i];
+		//}
 	}
 	
-	BVHNode* recursiveBuild(std::vector<Primitive>& primitives, int start, int end, int* total_nodes, std::vector<int>& ordered_prims)
+	BVHNode* recursiveBuild(std::vector<BVHPrimitive>& primitives, int start, int end, int* total_nodes, std::vector<int>& ordered_prims)
 	{
 
 		BVHNode* node = new BVHNode();
@@ -154,8 +179,8 @@ public:
 		scene->nodes[scene->num_nodes].min = glm::vec4(min.x, min.y, min.z, 0.0f);
 		scene->nodes[scene->num_nodes].max = glm::vec4(max.x, max.y, max.z, 0.0f);
 		scene->nodes[scene->num_nodes].left = -1;
-		scene->nodes[scene->num_nodes].num_tris = -1;
-		scene->nodes[scene->num_nodes].tri_index = -1;
+		scene->nodes[scene->num_nodes].prim_count = -1;
+		scene->nodes[scene->num_nodes].prim_index = -1;
 		node->linear_index = scene->num_nodes;
 		scene->num_nodes++;
 
@@ -170,8 +195,8 @@ public:
 				ordered_prims.push_back(prim_num);
 			}
 			node->initLeaf(prim_offset, prim_count, min, max);
-			scene->nodes[node->linear_index].tri_index = prim_offset;// primitives[start].index;
-			scene->nodes[node->linear_index].num_tris = prim_count;
+			scene->nodes[node->linear_index].prim_index = prim_offset;// primitives[start].index;
+			scene->nodes[node->linear_index].prim_count = prim_count;
 			return node;
 		}
 		else
@@ -215,8 +240,8 @@ public:
 					ordered_prims.push_back(prim_num);
 				}
 				node->initLeaf(prim_offset, prim_count, min, max);
-				scene->nodes[node->linear_index].tri_index = prim_offset;// primitives[start].index;
-				scene->nodes[node->linear_index].num_tris = prim_count;
+				scene->nodes[node->linear_index].prim_index = prim_offset;// primitives[start].index;
+				scene->nodes[node->linear_index].prim_count = prim_count;
 				return node;
 			}
 			else
@@ -224,8 +249,8 @@ public:
 				// partition primitives into two sets
 				// through node's midpoint
 				float pmid = (min[dim] + max[dim]) * 0.5f;
-				Primitive* mid_ptr = std::partition(&primitives[start], &primitives[end-1]+1,
-					[dim, pmid](const Primitive& prim) {
+				BVHPrimitive* mid_ptr = std::partition(&primitives[start], &primitives[end-1]+1,
+					[dim, pmid](const BVHPrimitive& prim) {
 						return prim.centroid[dim] < pmid;
 					}
 				);

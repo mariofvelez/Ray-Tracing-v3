@@ -36,8 +36,8 @@ struct Node
 {
 	int axis;
 	int left;
-	int num_tris;
-	int tri_index;
+	int prim_count;
+	int prim_index;
 	vec3 min;
 	vec3 max;
 };
@@ -57,14 +57,22 @@ layout(std430, binding = 0) buffer sceneBuffer
 	vec3 vertices[100000];
 	vec3 normals[100000];
 	vec2 textures[100000];
-	int indices[100000];
 	int vertices_size;
 	int normals_size;
 	int textures_size;
-	int indices_size;
 };
 
-layout(std430, binding = 1) buffer bvhBuffer
+layout(std430, binding = 1) buffer materialBuffer
+{
+	Material materials[];
+};
+
+layout(std430, binding = 2) buffer primitiveBuffer
+{
+	Primitive primitives[];
+};
+
+layout(std430, binding = 3) buffer bvhBuffer
 {
 	Node nodes[];
 };
@@ -78,11 +86,11 @@ vec3 reflect(vec3 vec, vec3 normal)
 	return vec - temp;
 }
 
-vec3 intersect(Ray ray, int tri)
+vec3 intersect(Ray ray, Primitive prim)
 {
-	vec3 a = vertices[indices[tri]];
-	vec3 b = vertices[indices[tri + 1]];
-	vec3 c = vertices[indices[tri + 2]];
+	vec3 a = vertices[prim.vertex_a];
+	vec3 b = vertices[prim.vertex_b];
+	vec3 c = vertices[prim.vertex_c];
 
 	vec3 e1 = b - a;
 	vec3 e2 = c - a;
@@ -156,13 +164,13 @@ Ray traceRay(Ray ray, inout uint seed)
 		Node node = nodes[current_node];
 		if (intersect(ray, node))
 		{
-			if (node.tri_index > -1) // leaf
+			if (node.prim_index > -1) // leaf
 			{
 				// intersect ray with primitive(s) in leaf node
-				for (int i = 0; i < node.num_tris; ++i)
+				for (int i = 0; i < node.prim_count; ++i)
 				{
-					int tri = (node.tri_index + i) * 3;
-					vec3 intersection = intersect(ray, tri);
+					Primitive prim = primitives[node.prim_index + i];
+					vec3 intersection = intersect(ray, prim);
 					if (intersection.x > 0.0 && intersection.x < dist)
 					{
 						dist = intersection.x;
@@ -171,10 +179,10 @@ Ray traceRay(Ray ray, inout uint seed)
 						/*vec2 a = textures[indices[tri]];
 						vec2 b = textures[indices[tri + 1]];
 						vec2 c = textures[indices[tri + 2]];*/
-						col = vec3(1.0, 0.82, 0.11); //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
-						normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
-							vertices[indices[tri + 1]] - vertices[indices[tri]]);
-						//normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
+						col = materials[prim.material].albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						/*normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
+							vertices[indices[tri + 1]] - vertices[indices[tri]]);*/
+						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
 						normal = normalize(normal);
 						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
 						terminate = false;

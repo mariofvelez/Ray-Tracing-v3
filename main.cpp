@@ -186,7 +186,7 @@ int main()
 	glEnableVertexAttribArray(1);
 
 
-	MaterialLoader mtl_loader;
+	/*MaterialLoader mtl_loader;
 	std::vector<Material> materials;
 	mtl_loader.loadMaterials("Objects/turtle/material.mtl", &materials);
 
@@ -195,7 +195,7 @@ int main()
 		Material& mat = materials[i];
 		dlogln("Material:");
 		dlogln("  col: " << mat.albedo.r << ", " << mat.albedo.g << ", " << mat.albedo.b);
-	}
+	}*/
 
 
 	dlogln("creating shader");
@@ -269,10 +269,20 @@ int main()
 	}
 	dlogln("loading object");
 	//scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
-	scene->loadObject("Objects/quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
-	scene->loadObject("Objects/icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
+
+	dlogln("Primitives before:");
+	scene->printPrimitives();
+
+	for (unsigned int i = 0; i < scene->materials.size(); ++i)
+	{
+		Material& mat = scene->materials[i];
+		dlogln("Material: " << scene->material_names[i]);
+		dlogln("  col: " << mat.albedo.r << ", " << mat.albedo.g << ", " << mat.albedo.b);
+	}
 	
 	/*scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, 10.0f, 2.0f), glm::vec3(1.0f));
 	scene->loadObject("Objects/shuttle.obj", glm::vec3(4.0f, -10.0f, 2.0f), glm::vec3(1.0f));*/
@@ -282,15 +292,23 @@ int main()
 
 	debug_start(glfwGetTime(), 0);
 
-	dlogln("creating BVH");
-	BVH bvh(scene);
-	bvh.computeBVH();
+	dlogln("generating BVH");
+	BVH* bvh = new BVH(scene);
+	bvh->computeBVH();
+	delete(bvh);
 
-	dlogln("sending BVH data to GPU");
-	scene->computeBVH(shader);
+	dlogln("creating BVH");
+	scene->updateBVH(shader);
+
+	dlogln("Primitives after:");
+	scene->printPrimitives();
 
 	dlogln("sending tri data to GPU");
 	scene->updateBuffer();
+
+	scene->updateMaterialBuffer();
+
+	scene->updatePrimitiveBuffer();
 
 	debug_end(glfwGetTime(), 0);
 

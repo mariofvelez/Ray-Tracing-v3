@@ -9,7 +9,7 @@
 
 struct Material
 {
-	glm::vec3 albedo;
+	glm::vec4 albedo;
 	// float roughness;
 	// float metal;
 	// glm::vec3 emission;
@@ -36,7 +36,7 @@ public:
 
 	}
 
-	void loadMaterials(const std::string& path, std::vector<Material>* materials)
+	void loadMaterials(const std::string& path, std::vector<Material>* materials, std::vector<std::string>* material_names)
 	{
 		std::string text;
 		std::ifstream file(path);
@@ -55,13 +55,14 @@ public:
 			if (tokens[0] == "newmtl")
 			{
 				curr_material = createMaterial(materials);
+				material_names->push_back(tokens[1]);
 			}
 			else if (tokens[0] == "Kd")
 			{
 				float r = std::stof(tokens[1]);
 				float g = std::stof(tokens[2]);
 				float b = std::stof(tokens[3]);
-				curr_material->albedo = glm::vec3(r, g, b);
+				curr_material->albedo = glm::vec4(r, g, b, 1.0f);
 			}
 		}
 	}
