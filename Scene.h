@@ -9,6 +9,7 @@
 #include "Debug.h"
 #include "Material.h"
 #include "Shader.h"
+#include "ImGuiRenderer.h"
 
 // all vertex, normal, and texture data for the scene
 struct SceneData
@@ -120,6 +121,10 @@ private:
 	}
 public:
 
+	Shader* albedo_shader;
+	Shader* normal_shader;
+	Shader* bvh_shader;
+
 	unsigned int data_buffer;
 	unsigned int material_buffer;
 	unsigned int primitive_buffer;
@@ -132,13 +137,20 @@ public:
 	SceneData scene_data;
 
 	int num_primitives;
-	Primitive primitives[10000];
+	Primitive primitives[100000];
 
 	int num_nodes;
 	Node nodes[40000];
 
+	// imgui
+	ImGuiRenderer imgui_renderer;
+
 	Scene() : num_nodes(0)
 	{
+		albedo_shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
+		normal_shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
+		bvh_shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
+
 		// creating default material
 		materials.emplace_back(Material());
 		Material& default_material = materials[0];
@@ -291,7 +303,7 @@ public:
 		file.close();
 	}
 
-	void updateBuffer()
+	void createSceneBuffer()
 	{
 		//std::cout << "mesh size: " << sizeof(mesh) << std::endl;
 		dlogln("vertices: " << scene_data.vertex_size << " | normals: " << scene_data.normal_size << " | primitives: " << num_primitives);
@@ -305,7 +317,7 @@ public:
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void updateMaterialBuffer()
+	void createMaterialBuffer()
 	{
 		glGenBuffers(1, &material_buffer);
 
@@ -315,7 +327,7 @@ public:
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void updatePrimitiveBuffer()
+	void createPrimitiveBuffer()
 	{
 		glGenBuffers(1, &primitive_buffer);
 
@@ -325,7 +337,7 @@ public:
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void updateBVH(Shader* shader)
+	void createBVHBuffer(Shader* shader)
 	{
 		shader->setInt("num_nodes", num_nodes);
 
@@ -337,6 +349,65 @@ public:
 		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(nodes), &nodes, GL_DYNAMIC_READ);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, bvh_buffer);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	void updateMaterialBuffer()
+	{
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, material_buffer);
+		GLvoid* p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+		memcpy(p, &materials[0], sizeof(Material) * materials.size());
+		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	}
+
+	void updateBVHBuffer(Shader* shader)
+	{
+		shader->setInt("num_nodes", num_nodes);
+	}
+
+	void ImGuiDisplayMaterialTree()
+	{
+		static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
+
+		ImGui::BeginTable("Materials", 1, flags);
+		ImGui::TableSetupColumn("Materials", ImGuiTableColumnFlags_NoHide);
+		ImGui::TableHeadersRow();
+
+		for (unsigned int i = 0; i < materials.size(); ++i)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			Material& mat = materials[i];
+			bool open = ImGui::TreeNodeEx(material_names[i].c_str(), tree_node_flags);
+
+			if (open)
+			{
+				// display properties
+				if (ImGui::ColorEdit3("Albedo", (float*)&mat.albedo, ImGuiColorEditFlags_Float))
+				{
+					updateMaterialBuffer();
+				}
+				ImGui::TreePop();
+			}
+		}
+
+		ImGui::EndTable();
+	}
+
+	void ImGuiDisplayDebugViewRadio(Shader** curr_shader)
+	{
+		ImGui::Text("Debug Views");
+		static int e = 0;
+		ImGui::RadioButton("Albedo", &e, 0);
+		ImGui::RadioButton("Normals", &e, 1);
+		ImGui::RadioButton("BVH", &e, 2);
+
+		if (e == 0)
+			*curr_shader = albedo_shader;
+		else if (e == 1)
+			*curr_shader = normal_shader;
+		else if (e == 2)
+			*curr_shader = bvh_shader;
 	}
 
 	void printPrimitives()

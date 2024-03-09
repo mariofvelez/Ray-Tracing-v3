@@ -1,10 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "imgui3/imgui.h"
-#include "imgui3/imgui_impl_glfw.h"
-#include "imgui3/imgui_impl_opengl3.h"
-
 #include <iostream>
 #include <stdlib.h>
 #include <random>
@@ -202,17 +198,14 @@ int main()
 		dlogln("  col: " << mat.albedo.r << ", " << mat.albedo.g << ", " << mat.albedo.b);
 	}*/
 
+	dlogln("creating scene");
+	Scene* scene = new Scene();
 
-	dlogln("creating shader");
-	Shader* shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
+	Shader* shader = scene->albedo_shader;
 	shader->use();
-
-	unsigned int camera_loc = shader->uniformLoc("camera");
 
 	glActiveTexture(GL_TEXTURE0);
 	unsigned int dragon_texture = textureFromFile("Objects/Stanford_Dragon/DefaultMaterial_baseColor.jpg");
-	glBindTexture(GL_TEXTURE_2D, dragon_texture);
-	shader->setInt("dragon_texture", 0);
 
 	/*std::vector<std::string> faces
 	{
@@ -230,8 +223,6 @@ int main()
 
 	glActiveTexture(GL_TEXTURE1);
 	unsigned int skybox_texture = textureFromFile("cape_hill.jpg");
-	glBindTexture(GL_TEXTURE_2D, skybox_texture);
-	shader->setInt("skybox_texture", 1);
 
 	const unsigned int num_spheres = 64;
 	/*glm::vec3 cols[] = {
@@ -246,11 +237,6 @@ int main()
 		glm::vec3(1.5f, 0.0f, 0.0f),
 		glm::vec3(3.0f, 0.0f, 0.0f)
 	};*/
-
-	srand(5);
-
-	dlogln("creating scene");
-	Scene* scene = new Scene();
 
 	std::uniform_real_distribution<float> rand(0.0f, 1.0f);
 	std::default_random_engine generator;
@@ -273,12 +259,12 @@ int main()
 		//scene->loadObject("Objects/icosahedron.obj", pos);
 	}
 	dlogln("loading object");
-	//scene->loadObject("Objects/Stanford_Dragon/scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
+	scene->loadObject("Objects/Stanford_Dragon/", "scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
 	scene->loadObject("Objects/", "quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
-	scene->loadObject("Objects/turtle/", "scene.obj", glm::vec3(0.0f), glm::vec3(1.0f));
-	/*scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
+	//scene->loadObject("Objects/turtle/", "scene.obj", glm::vec3(0.0f), glm::vec3(1.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
 	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));*/
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
 
 	/*dlogln("Primitives before:");
 	scene->printPrimitives();*/
@@ -304,17 +290,17 @@ int main()
 	delete(bvh);
 
 	dlogln("creating BVH");
-	scene->updateBVH(shader);
+	scene->createBVHBuffer(shader);
 
 	/*dlogln("Primitives after:");
 	scene->printPrimitives();*/
 
 	dlogln("sending tri data to GPU");
-	scene->updateBuffer();
+	scene->createSceneBuffer();
 
-	scene->updateMaterialBuffer();
+	scene->createMaterialBuffer();
 
-	scene->updatePrimitiveBuffer();
+	scene->createPrimitiveBuffer();
 
 	debug_end(glfwGetTime(), 0);
 
@@ -322,14 +308,7 @@ int main()
 
 
 	// imgui
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init();
+	scene->imgui_renderer.init(window);
 
 	int curr_frame = 1;
 
@@ -344,10 +323,19 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
+		// imgui update here
+		scene->imgui_renderer.update();
+		scene->ImGuiDisplayMaterialTree();
+		scene->ImGuiDisplayDebugViewRadio(&shader);
+		shader->use();
+
+		glBindTexture(GL_TEXTURE_2D, dragon_texture);
+		shader->setInt("dragon_texture", 0);
+
+		glBindTexture(GL_TEXTURE_2D, skybox_texture);
+		shader->setInt("skybox_texture", 1);
+
+		scene->updateBVHBuffer(shader);
 
 		processInput(window);
 
@@ -364,6 +352,7 @@ int main()
 		camera->updateView();
 
 		glm::mat4 inverse = glm::inverse(camera->view);
+		unsigned int camera_loc = shader->uniformLoc("camera");
 		glUniformMatrix4fv(camera_loc, 1, GL_FALSE, glm::value_ptr(inverse));
 		
 		//glEnable(GL_DEPTH_TEST);
@@ -375,8 +364,8 @@ int main()
 		glBindVertexArray(quadVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		// imgui render here
+		scene->imgui_renderer.render();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -399,10 +388,6 @@ int main()
 	delete(camera);
 	delete(shader);
 	delete(scene);
-
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	ImGui::DestroyContext();
 
 	glfwTerminate();
 	return 0;
