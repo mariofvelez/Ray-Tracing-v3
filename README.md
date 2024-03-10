@@ -1,6 +1,6 @@
 # Ray-Tracing-v3
 
-My 3rd attemp at a ray-tracer. Real-time with tens of thousands of triangles
+My 3rd attemp at a ray-tracer. an interactive Physically-Based Path Tracer
 
 ![image](https://github.com/mariofvelez/Ray-Tracing-v3/assets/32421774/df0369db-8ea1-4d7a-93f9-8d2644842fdd)
 
