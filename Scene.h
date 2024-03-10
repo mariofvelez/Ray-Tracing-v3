@@ -124,11 +124,15 @@ public:
 	Shader* albedo_shader;
 	Shader* normal_shader;
 	Shader* bvh_shader;
+	Shader* path_shader;
 
 	unsigned int data_buffer;
 	unsigned int material_buffer;
 	unsigned int primitive_buffer;
 	unsigned int bvh_buffer;
+
+	unsigned int sample_buffer;
+	unsigned int accumulate_buffer;
 
 	std::vector<std::string> loaded_material_files;
 	std::vector<Material> materials;
@@ -150,6 +154,7 @@ public:
 		albedo_shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
 		normal_shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
 		bvh_shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
+		path_shader = new Shader("Shaders/Vertex.shader", "Shaders/PathTraceFragment.shader");
 
 		// creating default material
 		materials.emplace_back(Material());
@@ -401,6 +406,7 @@ public:
 		ImGui::RadioButton("Albedo", &e, 0);
 		ImGui::RadioButton("Normals", &e, 1);
 		ImGui::RadioButton("BVH", &e, 2);
+		ImGui::RadioButton("Path Trace", &e, 3);
 
 		if (e == 0)
 			*curr_shader = albedo_shader;
@@ -408,6 +414,8 @@ public:
 			*curr_shader = normal_shader;
 		else if (e == 2)
 			*curr_shader = bvh_shader;
+		else if (e == 3)
+			*curr_shader = path_shader;
 	}
 
 	void printPrimitives()

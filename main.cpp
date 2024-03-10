@@ -187,17 +187,7 @@ int main()
 	glEnableVertexAttribArray(1);
 
 
-	/*MaterialLoader mtl_loader;
-	std::vector<Material> materials;
-	mtl_loader.loadMaterials("Objects/turtle/material.mtl", &materials);
-
-	for (unsigned int i = 0; i < materials.size(); ++i)
-	{
-		Material& mat = materials[i];
-		dlogln("Material:");
-		dlogln("  col: " << mat.albedo.r << ", " << mat.albedo.g << ", " << mat.albedo.b);
-	}*/
-
+	// scene
 	dlogln("creating scene");
 	Scene* scene = new Scene();
 

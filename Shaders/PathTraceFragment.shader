@@ -7,13 +7,21 @@ in vec2 TexCoord;
 uniform mat4 camera;
 uniform vec3 camera_pos;
 
+//uniform Sphere spheres[100];
+//const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5));
+uniform int num_nodes;
+uniform int curr_frame;
+uniform sampler2D dragon_texture;
+uniform sampler2D skybox_texture;
+const float pi = 3.14189265;
+
 struct Material
 {
 	vec3 albedo;
-	float roughness;
+	//float roughness;
 
-	vec3 emission;
-	vec3 emission_power;
+	//vec3 emission;
+	//vec3 emission_power;
 };
 
 struct Primitive
@@ -33,26 +41,42 @@ struct Node
 {
 	int axis;
 	int left;
-	int num_tris;
-	int tri_index;
+	int prim_count;
+	int prim_index;
 	vec3 min;
 	vec3 max;
 };
 
+struct Ray
+{
+	vec3 start;
+	vec3 dir;
+	vec3 inv;
+	vec3 col;
+	bool terminate;
+};
 
 layout(std430, binding = 0) buffer sceneBuffer
 {
 	vec3 vertices[100000];
 	vec3 normals[100000];
 	vec2 textures[100000];
-	int indices[100000];
 	int vertices_size;
 	int normals_size;
 	int textures_size;
-	int indices_size;
 };
 
-layout(std430, binding = 1) buffer bvhBuffer
+layout(std430, binding = 1) buffer materialBuffer
+{
+	Material materials[];
+};
+
+layout(std430, binding = 2) buffer primitiveBuffer
+{
+	Primitive primitives[];
+};
+
+layout(std430, binding = 3) buffer bvhBuffer
 {
 	Node nodes[];
 };
@@ -65,15 +89,6 @@ vec3 reflect(vec3 vec, vec3 normal)
 	return vec - temp;
 }
 
-struct Ray
-{
-	vec3 start;
-	vec3 dir;
-	vec3 inv;
-	vec3 col;
-	bool terminate;
-};
-
 //struct Sphere
 //{
 //	vec3 pos;
@@ -81,12 +96,12 @@ struct Ray
 //	vec3 col;
 //};
 //
-struct Plane
-{
-	vec3 pos;
-	vec3 normal;
-	vec3 col;
-};
+//struct Plane
+//{
+//	vec3 pos;
+//	vec3 normal;
+//	vec3 col;
+//};
 
 uint pcg_hash(uint input)
 {
@@ -126,19 +141,19 @@ vec3 on_unit_hemisphere(vec3 normal, inout uint seed)
 //	return 0.0;
 //}
 //
-float intersect(Ray ray, Plane plane)
-{
-	float t = dot(plane.normal, plane.pos - ray.start) / dot(plane.normal, ray.dir);
-	if (t > 0.00001)
-		return t;
-	return 0.0;
-}
+//float intersect(Ray ray, Plane plane)
+//{
+//	float t = dot(plane.normal, plane.pos - ray.start) / dot(plane.normal, ray.dir);
+//	if (t > 0.00001)
+//		return t;
+//	return 0.0;
+//}
 
-vec3 intersect(Ray ray, int tri)
+vec3 intersect(Ray ray, Primitive prim)
 {
-	vec3 a = vertices[indices[tri]];
-	vec3 b = vertices[indices[tri + 1]];
-	vec3 c = vertices[indices[tri + 2]];
+	vec3 a = vertices[prim.vertex_a];
+	vec3 b = vertices[prim.vertex_b];
+	vec3 c = vertices[prim.vertex_c];
 
 	vec3 e1 = b - a;
 	vec3 e2 = c - a;
@@ -193,14 +208,6 @@ bool intersect(Ray ray, Node aabb)
 	return tmax > tmin && tmax > 0.0;
 }
 
-//uniform Sphere spheres[100];
-const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5));
-uniform int num_nodes;
-uniform int curr_frame;
-uniform sampler2D dragon_texture;
-uniform sampler2D skybox_texture;
-const float pi = 3.14189265;
-
 Ray traceRay(Ray ray, inout uint seed)
 {
 	float dist = 999999.9;
@@ -239,13 +246,13 @@ Ray traceRay(Ray ray, inout uint seed)
 		Node node = nodes[current_node];
 		if (intersect(ray, node))
 		{
-			if (node.tri_index > -1) // leaf
+			if (node.prim_index > -1) // leaf
 			{
 				// intersect ray with primitive(s) in leaf node
-				for (int i = 0; i < node.num_tris; ++i)
+				for (int i = 0; i < node.prim_count; ++i)
 				{
-					int tri = (node.tri_index + i) * 3;
-					vec3 intersection = intersect(ray, tri);
+					Primitive prim = primitives[node.prim_index + i];
+					vec3 intersection = intersect(ray, prim);
 					if (intersection.x > 0.0 && intersection.x < dist)
 					{
 						dist = intersection.x;
@@ -254,11 +261,11 @@ Ray traceRay(Ray ray, inout uint seed)
 						/*vec2 a = textures[indices[tri]];
 						vec2 b = textures[indices[tri + 1]];
 						vec2 c = textures[indices[tri + 2]];*/
-						col = vec3(1.0, 0.82, 0.11); //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
-						normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
-							vertices[indices[tri + 1]] - vertices[indices[tri]]);
-						//normal = (1 - u - v) * normals[indices[tri]] + (u * normals[indices[tri + 1]]) + (v * normals[indices[tri + 2]]);
-						normal = normalize(normal);
+						col = materials[prim.material].albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						/*normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
+							vertices[indices[tri + 1]] - vertices[indices[tri]]);*/
+						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
+						normal = -normalize(normal);
 						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
 						terminate = false;
 					}
@@ -298,7 +305,10 @@ Ray traceRay(Ray ray, inout uint seed)
 		col = plane.col;
 		terminate = false;
 	}*/
-	vec3 dir = on_unit_hemisphere(normal, seed); //normalize(reflect(ray.dir, normal));
+	vec3 offs = vec3(rand_float(seed), rand_float(seed), rand_float(seed)) * 0.3;
+	vec3 dir = normalize(reflect(ray.dir, normal) + offs); // on_unit_hemisphere(normal, seed);
+	if (rand_float(seed) < 0.7)
+		dir = on_unit_hemisphere(normal, seed);
 	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
 
@@ -307,7 +317,7 @@ void main()
 	ivec2 screen_coord = ivec2(int((TexCoord.x + 1.0) * 600), int((TexCoord.y + 1.0) * 400));
 	uint seed = uint(screen_coord.y * 1200 + screen_coord.x + curr_frame * 1200 * 800);
 
-	int num_samples = 32;
+	int num_samples = 4;
 	for (uint j = 0; j < num_samples; ++j)
 	{
 		vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
@@ -331,6 +341,9 @@ void main()
 				break;
 		}
 
+		if (!ray.terminate)
+			ray.col = vec3(0.0);
+
 		/*vec3 bvh_col = vec3(0.0, 0.0, 0.0);
 
 		Ray new_ray = Ray(start, normalize(end - start), 1.0 / normalize(end - start), vec3(1.0, 1.0, 1.0), false);
@@ -341,10 +354,7 @@ void main()
 				bvh_col[nodes[i].axis] += 0.02;
 			}
 		}*/
-
-
-
-		vec3 d = vec3(rand_float(seed), rand_float(seed), rand_float(seed));
+		
 		FragColor += vec4(ray.col, 1.0);
 	}
 	FragColor /= float(num_samples);
