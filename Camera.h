@@ -82,8 +82,10 @@ public:
 
 	}
 	
-	void processInput(GLFWwindow* window, float dt)
+	bool processInput(GLFWwindow* window, float dt)
 	{
+		bool updated = false;
+
 		float camera_speed = speed * dt;
 		if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 			camera_speed *= 3.0f;
@@ -92,28 +94,60 @@ public:
 		glm::vec3 side = glm::normalize(glm::cross(forward, m_up)) * camera_speed;
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		{
 			rotateYaw(0.25 * camera_speed);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		{
 			rotateYaw(-0.25 * camera_speed);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		{
 			rotatePitch(0.25 * camera_speed);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		{
 			rotatePitch(-0.25 * camera_speed);
+			updated = true;
+		}
 
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		{
 			move(forward);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		{
 			move(-side);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		{
 			move(-forward);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		{
 			move(side);
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		{
 			move(glm::vec3(0.0f, 0.0f, camera_speed));
+			updated = true;
+		}
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+		{
 			move(glm::vec3(0.0f, 0.0f, -camera_speed));
+			updated = true;
+		}
 
 		updateView();
+
+		return updated;
 	}
 
 private:

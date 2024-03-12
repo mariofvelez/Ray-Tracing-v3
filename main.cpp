@@ -168,6 +168,7 @@ int main()
 
 	// renderer
 	Renderer* renderer = new Renderer(camera);
+	renderer->createBuffers(screen_width, screen_height);
 	
 	// loading objects
 	scene->loadObject("Objects/Stanford_Dragon/", "scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
@@ -221,7 +222,10 @@ int main()
 		renderer->ImGuiDisplayDebugViewRadio();
 
 		processInput(window);
-		camera->processInput(window, delta_time);
+		if (camera->processInput(window, delta_time))
+		{
+			renderer->resetAccumulate();
+		}
 
 		float current_frame = (float)glfwGetTime();
 		delta_time = current_frame - last_frame;

@@ -41,8 +41,8 @@ class Renderer
 	void sampleRender()
 	{
 		// render scene
-		/*glBindFramebuffer(GL_FRAMEBUFFER, sample_buffer);
-		glClear(GL_COLOR_BUFFER_BIT);*/
+		glBindFramebuffer(GL_FRAMEBUFFER, sample_buffer);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindVertexArray(quadVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -51,11 +51,42 @@ class Renderer
 	void accumulateRender()
 	{
 		// combine accumulate and sample buffer into result buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, result_buffer);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		accumulate_shader->use();
+
+		accumulate_shader->setInt("accumulate_texture", 0);
+		accumulate_shader->setInt("sample_texture", 1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, accumulate_texture);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, sample_texture);
+
+		glBindVertexArray(quadVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 	void copyResultIntoAccumulate()
 	{
 		// update accumulate buffer
+		glCopyImageSubData(result_texture, GL_TEXTURE_2D, 0, 0, 0, 0,
+						   accumulate_texture, GL_TEXTURE_2D, 0, 0, 0, 0, 1200, 800, 1); // change to window width and height
+	}
+
+	void postProcessRender()
+	{
+		// render post-processed image
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		post_process_shader->use();
+
+		post_process_shader->setInt("result_texture", 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, result_texture);
+
+		glBindVertexArray(quadVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 public:
@@ -67,6 +98,9 @@ public:
 		path_shader = new Shader("Shaders/Vertex.shader", "Shaders/PathTraceFragment.shader");
 
 		curr_shader = albedo_shader;
+
+		accumulate_shader = new Shader("Shaders/Vertex.shader", "Shaders/AccumulateFragment.shader");
+		post_process_shader = new Shader("Shaders/Vertex.shader", "Shaders/PostProcessFragment.shader");
 
 		// quad
 		float quad_vertices[] = {
@@ -160,6 +194,7 @@ public:
 	{
 		curr_shader->use();
 
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, scene->environment_map);
 		curr_shader->setInt("skybox_texture", 1);
 
@@ -190,6 +225,8 @@ public:
 		accumulateRender();
 
 		copyResultIntoAccumulate();
+
+		postProcessRender();
 
 		current_frame++;
 	}
