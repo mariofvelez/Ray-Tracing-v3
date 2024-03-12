@@ -4,11 +4,6 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform mat4 camera;
-uniform vec3 camera_pos;
-
-uniform int num_nodes;
-uniform int curr_frame;
 uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
@@ -21,6 +16,14 @@ struct Node
 	int tri_index;
 	vec3 min;
 	vec3 max;
+};
+
+layout(std140, binding = 4) uniform renderData
+{
+	mat4 camera;
+	vec3 camera_pos;
+	int num_nodes;
+	int curr_frame;
 };
 
 layout(std430, binding = 3) buffer bvhBuffer

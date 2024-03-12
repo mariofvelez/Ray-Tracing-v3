@@ -4,11 +4,6 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform mat4 camera;
-uniform vec3 camera_pos;
-
-uniform int num_nodes;
-uniform int curr_frame;
 uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
@@ -49,6 +44,14 @@ struct Ray
 	vec3 inv;
 	vec3 col;
 	bool terminate;
+};
+
+layout(std140, binding = 4) uniform renderData
+{
+	mat4 camera;
+	vec3 camera_pos;
+	int num_nodes;
+	int curr_frame;
 };
 
 // SSBOs
@@ -222,7 +225,7 @@ void main()
 	vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
 	vec4 ray_end = vec4((TexCoord.x - 0.5) * (3.0 / 2.0), TexCoord.y - 0.5, -1.0, 1.0);
 
-	vec3 start = (camera * ray_start).xyz;
+	vec3 start = camera_pos;
 	vec3 end = (camera * ray_end).xyz;
 
 	// ray creation

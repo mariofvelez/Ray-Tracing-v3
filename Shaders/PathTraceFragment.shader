@@ -4,13 +4,8 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform mat4 camera;
-uniform vec3 camera_pos;
-
 //uniform Sphere spheres[100];
 //const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5));
-uniform int num_nodes;
-uniform int curr_frame;
 uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
@@ -54,6 +49,14 @@ struct Ray
 	vec3 inv;
 	vec3 col;
 	bool terminate;
+};
+
+layout(std140, binding = 4) uniform renderData
+{
+	mat4 camera;
+	vec3 camera_pos;
+	int num_nodes;
+	int curr_frame;
 };
 
 layout(std430, binding = 0) buffer sceneBuffer
@@ -305,9 +308,9 @@ Ray traceRay(Ray ray, inout uint seed)
 		col = plane.col;
 		terminate = false;
 	}*/
-	vec3 offs = vec3(rand_float(seed), rand_float(seed), rand_float(seed)) * 0.3;
+	vec3 offs = vec3(rand_float(seed), rand_float(seed), rand_float(seed)) * 0.1;
 	vec3 dir = normalize(reflect(ray.dir, normal) + offs); // on_unit_hemisphere(normal, seed);
-	if (rand_float(seed) < 0.7)
+	if (rand_float(seed) < 0.9)
 		dir = on_unit_hemisphere(normal, seed);
 	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
@@ -317,7 +320,7 @@ void main()
 	ivec2 screen_coord = ivec2(int((TexCoord.x + 1.0) * 600), int((TexCoord.y + 1.0) * 400));
 	uint seed = uint(screen_coord.y * 1200 + screen_coord.x + curr_frame * 1200 * 800);
 
-	int num_samples = 4;
+	int num_samples = 1;
 	for (uint j = 0; j < num_samples; ++j)
 	{
 		vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);

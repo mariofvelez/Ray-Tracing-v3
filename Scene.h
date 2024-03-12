@@ -121,11 +121,6 @@ private:
 	}
 public:
 
-	Shader* albedo_shader;
-	Shader* normal_shader;
-	Shader* bvh_shader;
-	Shader* path_shader;
-
 	unsigned int data_buffer;
 	unsigned int material_buffer;
 	unsigned int primitive_buffer;
@@ -146,16 +141,10 @@ public:
 	int num_nodes;
 	Node nodes[40000];
 
-	// imgui
-	ImGuiRenderer imgui_renderer;
+	unsigned int environment_map;
 
 	Scene() : num_nodes(0)
 	{
-		albedo_shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
-		normal_shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
-		bvh_shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
-		path_shader = new Shader("Shaders/Vertex.shader", "Shaders/PathTraceFragment.shader");
-
 		// creating default material
 		materials.emplace_back(Material());
 		Material& default_material = materials[0];
@@ -342,10 +331,8 @@ public:
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	void createBVHBuffer(Shader* shader)
+	void createBVHBuffer()
 	{
-		shader->setInt("num_nodes", num_nodes);
-
 		std::cout << "nodes: " << num_nodes << std::endl;
 
 		glGenBuffers(1, &bvh_buffer);
@@ -364,9 +351,9 @@ public:
 		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 	}
 
-	void updateBVHBuffer(Shader* shader)
+	void setEnvironmentMap(unsigned int map)
 	{
-		shader->setInt("num_nodes", num_nodes);
+		environment_map = map;
 	}
 
 	void ImGuiDisplayMaterialTree()
@@ -397,25 +384,6 @@ public:
 		}
 
 		ImGui::EndTable();
-	}
-
-	void ImGuiDisplayDebugViewRadio(Shader** curr_shader)
-	{
-		ImGui::Text("Debug Views");
-		static int e = 0;
-		ImGui::RadioButton("Albedo", &e, 0);
-		ImGui::RadioButton("Normals", &e, 1);
-		ImGui::RadioButton("BVH", &e, 2);
-		ImGui::RadioButton("Path Trace", &e, 3);
-
-		if (e == 0)
-			*curr_shader = albedo_shader;
-		else if (e == 1)
-			*curr_shader = normal_shader;
-		else if (e == 2)
-			*curr_shader = bvh_shader;
-		else if (e == 3)
-			*curr_shader = path_shader;
 	}
 
 	void printPrimitives()

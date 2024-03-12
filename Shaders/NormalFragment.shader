@@ -4,11 +4,6 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform mat4 camera;
-uniform vec3 camera_pos;
-
-uniform int num_nodes;
-uniform int curr_frame;
 uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
@@ -49,6 +44,14 @@ struct Ray
 	vec3 inv;
 	vec3 col;
 	bool terminate;
+};
+
+layout(std140, binding = 4) uniform renderData
+{
+	mat4 camera;
+	vec3 camera_pos;
+	int num_nodes;
+	int curr_frame;
 };
 
 // SSBOs
