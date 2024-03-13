@@ -40,7 +40,7 @@ unsigned int textureFromFile(const std::string& filename, unsigned int texture_t
 	if (data)
 	{
 		glBindTexture(texture_type, textureID);
-		glTexImage2D(texture_type, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(texture_type, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
