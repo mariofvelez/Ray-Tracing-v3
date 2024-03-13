@@ -9,11 +9,6 @@ uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
 
 // structs
-struct Material
-{
-	vec3 albedo;
-};
-
 struct Primitive
 {
 	uint vertex_a;
@@ -63,11 +58,6 @@ layout(std430, binding = 0) buffer sceneBuffer
 	int vertices_size;
 	int normals_size;
 	int textures_size;
-};
-
-layout(std430, binding = 1) buffer materialBuffer
-{
-	Material materials[];
 };
 
 layout(std430, binding = 2) buffer primitiveBuffer

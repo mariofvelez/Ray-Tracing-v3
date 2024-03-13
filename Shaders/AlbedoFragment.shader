@@ -11,6 +11,10 @@ const float pi = 3.14189265;
 // structs
 struct Material
 {
+	float roughness;
+	float metallic;
+	float a;
+	float b;
 	vec3 albedo;
 };
 

@@ -356,8 +356,10 @@ public:
 		environment_map = map;
 	}
 
-	void ImGuiDisplayMaterialTree()
+	bool ImGuiDisplayMaterialTree()
 	{
+		bool updated = false;
+
 		static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
 
@@ -378,12 +380,30 @@ public:
 				if (ImGui::ColorEdit3("Albedo", (float*)&mat.albedo, ImGuiColorEditFlags_Float))
 				{
 					updateMaterialBuffer();
+					updated = true;
+				}
+				if (ImGui::SliderFloat("Roughness", &mat.roughness, 0.0f, 1.0f))
+				{
+					updateMaterialBuffer();
+					updated = true;
+				}
+				if (ImGui::SliderFloat("Metallic", &mat.metal, 0.0f, 1.0f))
+				{
+					updateMaterialBuffer();
+					updated = true;
+				}
+				if (ImGui::SliderFloat("Emission", &mat.emission, 1.0f, 50.0f, "%.3f", ImGuiSliderFlags_Logarithmic))
+				{
+					updateMaterialBuffer();
+					updated = true;
 				}
 				ImGui::TreePop();
 			}
 		}
 
 		ImGui::EndTable();
+
+		return updated;
 	}
 
 	void printPrimitives()

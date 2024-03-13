@@ -9,9 +9,11 @@
 
 struct Material
 {
+	float roughness;
+	float metal;
+	float emission = 1.0f;
+	float b;
 	glm::vec4 albedo;
-	// float roughness;
-	// float metal;
 	// glm::vec3 emission;
 	// float emission_strength;
 };

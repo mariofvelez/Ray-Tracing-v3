@@ -163,7 +163,7 @@ int main()
 	Scene* scene = new Scene();
 
 	glActiveTexture(GL_TEXTURE1);
-	unsigned int skybox = textureFromFile("cape_hill.jpg");
+	unsigned int skybox = textureFromFile("environment_map.jpg");
 	scene->setEnvironmentMap(skybox);
 
 	// renderer
@@ -174,9 +174,9 @@ int main()
 	scene->loadObject("Objects/Stanford_Dragon/", "scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
 	scene->loadObject("Objects/", "quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
 	//scene->loadObject("Objects/turtle/", "scene.obj", glm::vec3(0.0f), glm::vec3(1.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(4.0f, 4.0f, 3.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-4.0f, 4.0f, 5.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -4.0f, 2.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(7.0f, 7.0f, 3.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-5.0f, 7.0f, 12.0f), glm::vec3(2.0f));
+	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -7.0f, 8.0f), glm::vec3(2.0f));
 
 	debug_start(glfwGetTime(), 0);
 
@@ -218,7 +218,10 @@ int main()
 	{
 		// imgui update
 		renderer->updateImGui();
-		scene->ImGuiDisplayMaterialTree();
+		if (scene->ImGuiDisplayMaterialTree())
+		{
+			renderer->resetAccumulate();
+		}
 		renderer->ImGuiDisplayDebugViewRadio();
 
 		processInput(window);

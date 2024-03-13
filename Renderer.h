@@ -32,6 +32,8 @@ class Renderer
 	Shader* accumulate_shader; // combines sample and accumulate textures
 	Shader* post_process_shader; // renders accumulate texture to default buffer with post processing
 
+	float exposure;
+
 	int current_frame;
 
 	Camera* camera;
@@ -85,12 +87,14 @@ class Renderer
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, result_texture);
 
+		post_process_shader->setFloat("exposure", exposure);
+
 		glBindVertexArray(quadVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 public:
-	Renderer(Camera* camera) : current_frame(1), camera(camera)
+	Renderer(Camera* camera) : current_frame(1), camera(camera), exposure(1.0f)
 	{
 		albedo_shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
 		normal_shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
@@ -157,7 +161,7 @@ public:
 
 		glGenTextures(1, &sample_texture);
 		glBindTexture(GL_TEXTURE_2D, sample_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sample_texture, 0);
@@ -168,7 +172,7 @@ public:
 
 		glGenTextures(1, &accumulate_texture);
 		glBindTexture(GL_TEXTURE_2D, accumulate_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumulate_texture, 0);
@@ -179,7 +183,7 @@ public:
 
 		glGenTextures(1, &result_texture);
 		glBindTexture(GL_TEXTURE_2D, result_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screen_width, screen_height, 0, GL_RGBA, GL_FLOAT, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, result_texture, 0);
@@ -258,6 +262,11 @@ public:
 			curr_shader = bvh_shader;
 		else if (e == 3)
 			curr_shader = path_shader;
+
+		ImGui::NewLine();
+
+		ImGui::Text("Post Processing");
+		ImGui::SliderFloat("Exposure", &exposure, 0.0f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 	}
 
 	void resetAccumulate()

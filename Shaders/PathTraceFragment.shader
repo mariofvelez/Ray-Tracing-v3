@@ -12,11 +12,11 @@ const float pi = 3.14189265;
 
 struct Material
 {
+	float roughness;
+	float metallic;
+	float emission;
+	float b;
 	vec3 albedo;
-	//float roughness;
-
-	//vec3 emission;
-	//vec3 emission_power;
 };
 
 struct Primitive
@@ -215,9 +215,10 @@ Ray traceRay(Ray ray, inout uint seed)
 {
 	float dist = 999999.9;
 	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / (pi*2.0), (asin(ray.dir.z) + pi/2.0) / pi);
-	vec3 col = texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
+	vec3 col = vec3(0.0);// texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
+	Material mat;
 	/*for (int i = 0; i < 100; ++i)
 	{
 		float d = intersect(ray, spheres[i]);
@@ -264,7 +265,8 @@ Ray traceRay(Ray ray, inout uint seed)
 						/*vec2 a = textures[indices[tri]];
 						vec2 b = textures[indices[tri + 1]];
 						vec2 c = textures[indices[tri + 2]];*/
-						col = materials[prim.material].albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						mat = materials[prim.material];
+						col = mat.albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
 						/*normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
 							vertices[indices[tri + 1]] - vertices[indices[tri]]);*/
 						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
@@ -308,9 +310,15 @@ Ray traceRay(Ray ray, inout uint seed)
 		col = plane.col;
 		terminate = false;
 	}*/
-	vec3 offs = vec3(rand_float(seed), rand_float(seed), rand_float(seed)) * 0.1;
+	if (mat.emission > 1.0)
+	{
+		terminate = true;
+		col *= mat.emission;
+	}
+	vec3 offs = vec3(rand_float(seed), rand_float(seed), rand_float(seed)) - vec3(0.5);
+	offs *= mat.roughness;
 	vec3 dir = normalize(reflect(ray.dir, normal) + offs); // on_unit_hemisphere(normal, seed);
-	if (rand_float(seed) < 0.9)
+	if (rand_float(seed) < 1 - mat.metallic)
 		dir = on_unit_hemisphere(normal, seed);
 	return Ray(ray.start + ray.dir * dist * 0.999, dir, 1.0 / dir, ray.col * col, terminate);
 }
