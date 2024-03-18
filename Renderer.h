@@ -11,6 +11,7 @@ class Renderer
 	// render shaders
 	Shader* albedo_shader;
 	Shader* normal_shader;
+	Shader* fresnel_shader;
 	Shader* bvh_shader;
 	Shader* path_shader;
 
@@ -98,6 +99,7 @@ public:
 	{
 		albedo_shader = new Shader("Shaders/Vertex.shader", "Shaders/AlbedoFragment.shader");
 		normal_shader = new Shader("Shaders/Vertex.shader", "Shaders/NormalFragment.shader");
+		fresnel_shader = new Shader("Shaders/Vertex.shader", "Shaders/FresnelFragment.shader");
 		bvh_shader = new Shader("Shaders/Vertex.shader", "Shaders/BVHFragment.shader");
 		path_shader = new Shader("Shaders/Vertex.shader", "Shaders/PathTraceFragment.shader");
 
@@ -144,6 +146,7 @@ public:
 	{
 		delete(albedo_shader);
 		delete(normal_shader);
+		delete(fresnel_shader);
 		delete(bvh_shader);
 		delete(path_shader);
 
@@ -198,9 +201,17 @@ public:
 	{
 		curr_shader->use();
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, scene->base_map);
+		curr_shader->setInt("base_txture", 0);
+
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, scene->environment_map);
 		curr_shader->setInt("skybox_texture", 1);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, scene->emissive_map);
+		curr_shader->setInt("emissive_texture", 2);
 
 		// update camera matrices
 		camera->updateProjection(9.0f / 6.0f);
@@ -251,22 +262,36 @@ public:
 		static int e = 0;
 		ImGui::RadioButton("Albedo", &e, 0);
 		ImGui::RadioButton("Normals", &e, 1);
-		ImGui::RadioButton("BVH", &e, 2);
-		ImGui::RadioButton("Path Trace", &e, 3);
+		ImGui::RadioButton("Fresnel", &e, 2);
+		ImGui::RadioButton("BVH", &e, 3);
+		ImGui::RadioButton("Path Trace", &e, 4);
 
-		if (e == 0)
+		switch (e)
+		{
+		case 0:
 			curr_shader = albedo_shader;
-		else if (e == 1)
+			break;
+		case 1:
 			curr_shader = normal_shader;
-		else if (e == 2)
+			break;
+		case 2:
+			curr_shader = fresnel_shader;
+			break;
+		case 3:
 			curr_shader = bvh_shader;
-		else if (e == 3)
+			break;
+		case 4:
 			curr_shader = path_shader;
+		}
 
 		ImGui::NewLine();
 
 		ImGui::Text("Post Processing");
 		ImGui::SliderFloat("Exposure", &exposure, 0.0f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+
+		ImGui::NewLine();
+
+		ImGui::Text("Frame: %d", current_frame);
 	}
 
 	void resetAccumulate()

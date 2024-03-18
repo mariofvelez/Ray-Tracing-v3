@@ -6,8 +6,9 @@ in vec2 TexCoord;
 
 //uniform Sphere spheres[100];
 //const Plane plane = Plane(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.5, 0.5, 0.5));
-uniform sampler2D dragon_texture;
+uniform sampler2D base_texture;
 uniform sampler2D skybox_texture;
+uniform sampler2D emissive_texture;
 const float pi = 3.14189265;
 
 struct Material
@@ -28,6 +29,10 @@ struct Primitive
 	uint normal_a;
 	uint normal_b;
 	uint normal_c;
+
+	uint texture_a;
+	uint texture_b;
+	uint texture_c;
 
 	uint material;
 };
@@ -61,9 +66,9 @@ layout(std140, binding = 4) uniform renderData
 
 layout(std430, binding = 0) buffer sceneBuffer
 {
-	vec3 vertices[100000];
-	vec3 normals[100000];
-	vec2 textures[100000];
+	vec3 vertices[200000];
+	vec3 normals[200000];
+	vec2 textures[200000];
 	int vertices_size;
 	int normals_size;
 	int textures_size;
@@ -214,7 +219,7 @@ bool intersect(Ray ray, Node aabb)
 Ray traceRay(Ray ray, inout uint seed)
 {
 	float dist = 999999.9;
-	vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / (pi*2.0), (asin(ray.dir.z) + pi/2.0) / pi);
+	//vec2 tex_coord = vec2((atan(ray.dir.y, ray.dir.x) + pi/2.0) / (pi*2.0), (asin(ray.dir.z) + pi/2.0) / pi);
 	vec3 col = vec3(0.0);// texture(skybox_texture, tex_coord).xyz;// vec3(1.0);// vec3(0.4, 0.8, 1.0);
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
@@ -262,13 +267,15 @@ Ray traceRay(Ray ray, inout uint seed)
 						dist = intersection.x;
 						float u = intersection.y;
 						float v = intersection.z;
-						/*vec2 a = textures[indices[tri]];
-						vec2 b = textures[indices[tri + 1]];
-						vec2 c = textures[indices[tri + 2]];*/
+						vec2 a = textures[prim.texture_a];
+						vec2 b = textures[prim.texture_b];
+						vec2 c = textures[prim.texture_c];
 						mat = materials[prim.material];
-						col = mat.albedo; //texture(dragon_texture, (1 - u - v) * a + u * b + v * c).xyz; vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
+						mat.emission = length(texture(emissive_texture, (1 - u - v) * a + u * b + v * c).xyz) * mat.emission + 1.0;
+						col = texture(base_texture, (1 - u - v) * a + u * b + v * c).xyz; //vec3(0.7, 1.0, 0.2); vec3(1 - intersection.y - intersection.z, intersection.yz);
 						/*normal = cross(vertices[indices[tri + 2]] - vertices[indices[tri]],
 							vertices[indices[tri + 1]] - vertices[indices[tri]]);*/
+						
 						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
 						normal = -normalize(normal);
 						//col = (0.8 * max(dot(normal, vec3(0.0, 0.0, -1.0)), 0.0) + 0.2) * col;
@@ -301,7 +308,6 @@ Ray traceRay(Ray ray, inout uint seed)
 			current_node = nodes_to_visit[--to_visit_offset];
 		}
 	}
-
 
 	/*float d = intersect(ray, plane);
 	if (d > 0 && d < dist)
@@ -345,7 +351,7 @@ void main()
 		ray.col = vec3(1.0);
 		ray.terminate = false;
 
-		for (uint i = 0; i < 4; ++i)
+		for (uint i = 0; i < 8; ++i)
 		{
 			ray = traceRay(ray, seed);
 			if (ray.terminate)
@@ -354,17 +360,6 @@ void main()
 
 		if (!ray.terminate)
 			ray.col = vec3(0.0);
-
-		/*vec3 bvh_col = vec3(0.0, 0.0, 0.0);
-
-		Ray new_ray = Ray(start, normalize(end - start), 1.0 / normalize(end - start), vec3(1.0, 1.0, 1.0), false);
-		for (int i = 0; i < num_nodes; ++i)
-		{
-			if (intersect(new_ray, nodes[i]))
-			{
-				bvh_col[nodes[i].axis] += 0.02;
-			}
-		}*/
 		
 		FragColor += vec4(ray.col, 1.0);
 	}

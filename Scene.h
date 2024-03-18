@@ -14,9 +14,9 @@
 // all vertex, normal, and texture data for the scene
 struct SceneData
 {
-	glm::vec4 vertices[100000];
-	glm::vec4 normals[100000];
-	glm::vec2 texture[100000];
+	glm::vec4 vertices[200000];
+	glm::vec4 normals[200000];
+	glm::vec2 texture[200000];
 	int vertex_size = 0;
 	int normal_size = 0;
 	int texture_size = 0;
@@ -34,6 +34,11 @@ struct Primitive
 	unsigned int normal_a;
 	unsigned int normal_b;
 	unsigned int normal_c;
+
+	// indices of each texture coordinate
+	unsigned int texture_a;
+	unsigned int texture_b;
+	unsigned int texture_c;
 
 	// index ID of the material
 	unsigned int material;
@@ -136,12 +141,14 @@ public:
 	SceneData scene_data;
 
 	int num_primitives;
-	Primitive primitives[100000];
+	Primitive primitives[200000];
 
 	int num_nodes;
-	Node nodes[40000];
+	Node nodes[100000];
 
+	unsigned int base_map;
 	unsigned int environment_map;
+	unsigned int emissive_map;
 
 	Scene() : num_nodes(0)
 	{
@@ -208,6 +215,8 @@ public:
 				{
 					glm::vec2 v = glm::vec2(std::stof(tokens[1]), std::stof(tokens[2]));
 
+					scene_data.texture[scene_data.texture_size] = v;
+					scene_data.texture_size++;
 					/*mesh.texture[mesh.texture_size] = v;
 					mesh.texture_size++;*/
 				}
@@ -222,6 +231,9 @@ public:
 					p.vertex_a = i1.x + vertex_offset;
 					p.vertex_b = i2.x + vertex_offset;
 					p.vertex_c = i3.x + vertex_offset;
+					p.texture_a = i1.y + texture_offset;
+					p.texture_b = i2.y + texture_offset;
+					p.texture_c = i3.y + texture_offset;
 					p.normal_a = i1.z + normal_offset;
 					p.normal_b = i2.z + normal_offset;
 					p.normal_c = i3.z + normal_offset;
@@ -233,14 +245,17 @@ public:
 						glm::ivec3 i4 = parseFaceIndex(tokens[4]);
 
 						primitives[num_primitives] = Primitive();
-						Primitive& p = primitives[num_primitives];
-						p.vertex_a = i3.x + vertex_offset;
-						p.vertex_b = i4.x + vertex_offset;
-						p.vertex_c = i1.x + vertex_offset;
-						p.normal_a = i3.z + normal_offset;
-						p.normal_b = i4.z + normal_offset;
-						p.normal_c = i1.z + normal_offset;
-						p.material = curr_material;
+						Primitive& q = primitives[num_primitives];
+						q.vertex_b = i4.x + vertex_offset;
+						q.vertex_a = i3.x + vertex_offset;
+						q.vertex_c = i1.x + vertex_offset;
+						q.texture_a = i3.y + texture_offset;
+						q.texture_b = i4.y + texture_offset;
+						q.texture_c = i1.y + texture_offset;
+						q.normal_a = i3.z + normal_offset;
+						q.normal_b = i4.z + normal_offset;
+						q.normal_c = i1.z + normal_offset;
+						q.material = curr_material;
 						num_primitives++;
 					}
 
@@ -300,7 +315,7 @@ public:
 	void createSceneBuffer()
 	{
 		//std::cout << "mesh size: " << sizeof(mesh) << std::endl;
-		dlogln("vertices: " << scene_data.vertex_size << " | normals: " << scene_data.normal_size << " | primitives: " << num_primitives);
+		dlogln("vertices: " << scene_data.vertex_size << " | normals: " << scene_data.normal_size << " | textures: " << scene_data.texture_size << " | primitives: " << num_primitives);
 		dlogln("BVH nodes: " << num_nodes);
 
 		glGenBuffers(1, &data_buffer);
@@ -351,9 +366,18 @@ public:
 		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 	}
 
+	void setBaseMap(unsigned int map)
+	{
+		base_map = map;
+	}
+
 	void setEnvironmentMap(unsigned int map)
 	{
 		environment_map = map;
+	}
+	void setEmissiveMap(unsigned int map)
+	{
+		emissive_map = map;
 	}
 
 	bool ImGuiDisplayMaterialTree()
@@ -377,7 +401,7 @@ public:
 			if (open)
 			{
 				// display properties
-				if (ImGui::ColorEdit3("Albedo", (float*)&mat.albedo, ImGuiColorEditFlags_Float))
+				if (ImGui::ColorEdit3("Albedo", (float*)&mat.albedo, ImGuiColorEditFlags_Float | ImGuiConfigFlags_IsSRGB))
 				{
 					updateMaterialBuffer();
 					updated = true;

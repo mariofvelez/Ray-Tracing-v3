@@ -4,20 +4,11 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform sampler2D base_texture;
+uniform sampler2D dragon_texture;
 uniform sampler2D skybox_texture;
 const float pi = 3.14189265;
 
 // structs
-struct Material
-{
-	float roughness;
-	float metallic;
-	float a;
-	float b;
-	vec3 albedo;
-};
-
 struct Primitive
 {
 	uint vertex_a;
@@ -71,11 +62,6 @@ layout(std430, binding = 0) buffer sceneBuffer
 	int vertices_size;
 	int normals_size;
 	int textures_size;
-};
-
-layout(std430, binding = 1) buffer materialBuffer
-{
-	Material materials[];
 };
 
 layout(std430, binding = 2) buffer primitiveBuffer
@@ -165,7 +151,7 @@ Ray traceRay(Ray ray, inout uint seed)
 	vec3 col = texture(skybox_texture, tex_coord).xyz;
 	vec3 normal = vec3(0.0, 0.0, 1.0);
 	bool terminate = true;
-	
+
 	// ray traversal
 	int to_visit_offset = 0;
 	int current_node = 0;
@@ -185,18 +171,15 @@ Ray traceRay(Ray ray, inout uint seed)
 					if (intersection.x > 0.0 && intersection.x < dist)
 					{
 						dist = intersection.x;
+
 						float u = intersection.y;
 						float v = intersection.z;
-
-						vec2 a = textures[prim.texture_a];
-						vec2 b = textures[prim.texture_b];
-						vec2 c = textures[prim.texture_c];
-						col = texture(base_texture, (1 - u - v) * a + u * b + v * c).xyz;
-
-						//col = materials[prim.material].albedo;
-
 						normal = (1 - u - v) * normals[prim.normal_a] + (u * normals[prim.normal_b]) + (v * normals[prim.normal_c]);
 						normal = normalize(normal);
+
+						float r0 = 0.2;
+						float fresnel = r0 + (1 - r0) * pow(1 - abs(dot(-ray.dir, normal)), 5);
+						col = vec3(fresnel);
 
 						terminate = false;
 					}
@@ -239,7 +222,7 @@ void main()
 	vec4 ray_start = vec4(0.0, 0.0, 0.0, 1.0);
 	vec4 ray_end = vec4((TexCoord.x - 0.5) * (3.0 / 2.0), TexCoord.y - 0.5, -1.0, 1.0);
 
-	vec3 start = camera_pos;
+	vec3 start = (camera * ray_start).xyz;
 	vec3 end = (camera * ray_end).xyz;
 
 	// ray creation

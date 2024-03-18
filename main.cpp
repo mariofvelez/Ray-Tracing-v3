@@ -162,9 +162,17 @@ int main()
 	// scene
 	Scene* scene = new Scene();
 
+	glActiveTexture(GL_TEXTURE0);
+	unsigned int base_map = textureFromFile("Objects/inn/bakeInn_baseColor.png");
+	scene->setBaseMap(base_map);
+
 	glActiveTexture(GL_TEXTURE1);
-	unsigned int skybox = textureFromFile("environment_map.jpg");
+	unsigned int skybox = textureFromFile("cathedral.jpg");
 	scene->setEnvironmentMap(skybox);
+
+	glActiveTexture(GL_TEXTURE2);
+	unsigned int emission_map = textureFromFile("Objects/inn/bakeInn_emissive.png");
+	scene->setEmissiveMap(emission_map);
 
 	// renderer
 	Renderer* renderer = new Renderer(camera);
@@ -174,9 +182,11 @@ int main()
 	scene->loadObject("Objects/Stanford_Dragon/", "scene.obj", glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.1f));
 	scene->loadObject("Objects/", "quad.obj", glm::vec3(-15.0f, 15.0f, 0.0f), glm::vec3(1.0f));
 	//scene->loadObject("Objects/turtle/", "scene.obj", glm::vec3(0.0f), glm::vec3(1.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(7.0f, 7.0f, 3.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-5.0f, 7.0f, 12.0f), glm::vec3(2.0f));
-	scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -7.0f, 8.0f), glm::vec3(2.0f));
+	//scene->loadObject("Objects/rosary/", "scene.obj", glm::vec3(0.0f, 0.0f, 0.075f), glm::vec3(50.0f));
+	//scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(2.0f));
+	//scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(-5.0f, 7.0f, 15.0f), glm::vec3(2.0f));
+	//scene->loadObject("Objects/", "icosahedron.obj", glm::vec3(0.0f, -12.0f, 12.0f), glm::vec3(2.0f));
+	//scene->loadObject("Objects/inn/", "scene.obj", glm::vec3(-60.0f, 0.0f, -10.0f), glm::vec3(2.0f));
 
 	debug_start(glfwGetTime(), 0);
 

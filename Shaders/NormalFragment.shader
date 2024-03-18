@@ -19,6 +19,10 @@ struct Primitive
 	uint normal_b;
 	uint normal_c;
 
+	uint texture_a;
+	uint texture_b;
+	uint texture_c;
+
 	uint material;
 };
 
@@ -52,9 +56,9 @@ layout(std140, binding = 4) uniform renderData
 // SSBOs
 layout(std430, binding = 0) buffer sceneBuffer
 {
-	vec3 vertices[100000];
-	vec3 normals[100000];
-	vec2 textures[100000];
+	vec3 vertices[200000];
+	vec3 normals[200000];
+	vec2 textures[200000];
 	int vertices_size;
 	int normals_size;
 	int textures_size;
